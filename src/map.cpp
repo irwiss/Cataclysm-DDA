@@ -1518,6 +1518,18 @@ void map::level_vehicle( vehicle &veh )
     }
 }
 
+bool map::veh_roof_at( const tripoint &p, const Creature *creature ) const
+{
+    if( p.z == OVERMAP_DEPTH ) {
+        return false;
+    }
+    if( creature && creature->get_size() >= creature_size::large ) {
+        return false; // roofs can't support cow-class and above sizes
+    }
+    return veh_at( tripoint( p.x, p.y, p.z - 1 ) )
+           .part_with_feature( vpart_bitflags::VPFLAG_ROOF, true ).has_value();
+}
+
 bool map::displace_water( const tripoint &p )
 {
     // Check for shallow water
@@ -9322,6 +9334,10 @@ void map::maybe_trigger_trap( const tripoint &pos, Creature &c, const bool may_a
             pl->add_msg_if_player( _( "You've spotted a %1$s!" ), tr.name() );
             pl->add_known_trap( pos, tr );
         }
+        return;
+    }
+
+    if( tr == tr_ledge && veh_roof_at( pos, &c ) ) {
         return;
     }
 

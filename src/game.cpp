@@ -10092,12 +10092,14 @@ std::vector<std::string> game::get_dangerous_tile( const tripoint &dest_loc ) co
 
     const trap &tr = m.tr_at( dest_loc );
     // HACK: Hack for now, later ledge should stop being a trap
-    if( tr == tr_ledge ) {
-        if( !veh_dest && !u.has_effect_with_flag( json_flag_LEVITATION ) ) {
+    if( !veh_dest ) {
+        if( tr == tr_ledge ) {
+            if( !m.veh_roof_at( dest_loc, &u ) && !u.has_effect_with_flag( json_flag_LEVITATION ) ) {
+                harmful_stuff.emplace_back( tr.name() );
+            }
+        } else if( tr.can_see( dest_loc, u ) && !tr.is_benign() ) {
             harmful_stuff.emplace_back( tr.name() );
         }
-    } else if( tr.can_see( dest_loc, u ) && !tr.is_benign() && !veh_dest ) {
-        harmful_stuff.emplace_back( tr.name() );
     }
 
     static const std::set< bodypart_str_id > sharp_bps = {

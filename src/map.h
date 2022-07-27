@@ -717,6 +717,8 @@ class map
         // make sure a vehicle that is split across z-levels is properly supported
         // calls displace_vehicle() and shouldn't be called from displace_vehicle
         void level_vehicle( vehicle &veh );
+        // Returns true if the zlevel under p has a vehicle tile with non-broken ROOF installed
+        bool veh_roof_at( const tripoint &p, const Creature *creature ) const;
         // move water under wheels. true if moved
         bool displace_water( const tripoint &dp );
 

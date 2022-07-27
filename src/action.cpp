@@ -43,6 +43,8 @@
 
 static const itype_id itype_swim_fins( "swim_fins" );
 
+static const trap_str_id trap_ledge( "tr_ledge" );
+
 static const quality_id qual_BUTCHER( "BUTCHER" );
 static const quality_id qual_CUT_FINE( "CUT_FINE" );
 
@@ -682,7 +684,9 @@ bool can_examine_at( const tripoint &p, bool with_pickup )
         return true;
     }
     if( xter_t.can_examine( p ) ) {
-        return true;
+        if( !( xter_t.trap == trap_ledge && here.veh_roof_at( p, nullptr ) ) ) {
+            return true;
+        }
     }
 
     Creature *c = get_creature_tracker().creature_at( p );

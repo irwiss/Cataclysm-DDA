@@ -1204,6 +1204,10 @@ bool trapfunc::ledge( const tripoint &p, Creature *c, item * )
 
     map &here = get_map();
 
+    if( here.veh_roof_at( p, c ) ) {
+        return false;
+    }
+
     int height = 0;
     tripoint where = p;
     tripoint below = where;
