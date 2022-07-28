@@ -11602,9 +11602,18 @@ void game::vertical_move( int movez, bool force, bool peeking )
             return;
         }
 
+        std::vector<tripoint> pts;
+
+        // find vehicle ladders ( parts with ROOF_CLIMB flag )
+        for( const tripoint &pt : here.points_in_radius( u.pos(), 1 ) ) {
+            if( m.veh_at( pt ).part_with_feature( vpart_bitflags::VPFLAG_ROOF_CLIMB, true ) ) {
+                pts.push_back( pt );
+            }
+        }
+
         const int cost = u.climbing_cost( u.pos(), stairs );
         add_msg_debug( debugmode::DF_GAME, "Climb cost %d", cost );
-        const bool can_climb_here = cost > 0 ||
+        const bool can_climb_here = !pts.empty() || cost > 0 ||
                                     u.has_flag( json_flag_CLIMB_NO_LADDER ) || wall_cling;
         if( !can_climb_here ) {
             add_msg( m_info, _( "You can't climb here - you need walls and/or furniture to brace against." ) );
@@ -11625,8 +11634,10 @@ void game::vertical_move( int movez, bool force, bool peeking )
             }
         }
 
-        std::vector<tripoint> pts;
         for( const tripoint &pt : here.points_in_radius( stairs, 1 ) ) {
+            if( here.veh_at( tripoint( pt.xy(), pt.z - 1 ) ) ) {
+                continue; // skip, already handled this point above
+            }
             if( here.passable( pt ) &&
                 here.has_floor_or_support( pt ) ) {
                 pts.push_back( pt );

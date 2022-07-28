@@ -116,6 +116,11 @@
     "info": "Keeps the rain out of the interior of the vehicle."
   },
   {
+    "id": "ROOF_CLIMB",
+    "type": "json_flag",
+    "info": "Allows climbing to the roof from an adjacent spot."
+  },
+  {
     "id": "SEAT",
     "type": "json_flag",
     "info": "You need to be in a seat or saddle to operate vehicle controls."

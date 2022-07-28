@@ -123,5 +123,28 @@
     },
     "breaks_into": [ { "item": "plastic_chunk", "count": [ 2, 5 ] } ],
     "variants": [ { "symbols": "8", "symbols_broken": "x" } ]
+  },
+  {
+    "type": "vehicle_part",
+    "id": "roof_ladder",
+    "name": { "str": "roof with ladder bars" },
+    "symbol": "#",
+    "categories": [ "hull" ],
+    "color": "light_gray",
+    "broken_symbol": "#",
+    "broken_color": "dark_gray",
+    "durability": 240,
+    "description": "A metal roof.",
+    "item": "sheet_metal",
+    "location": "roof",
+    "requirements": {
+      "install": { "skills": [ [ "mechanics", 1 ] ], "time": "60 m", "using": [ [ "welding_standard", 5 ] ] },
+      "removal": { "skills": [ [ "mechanics", 2 ] ], "time": "30 m", "using": [ [ "vehicle_weld_removal", 1 ] ] },
+      "repair": { "skills": [ [ "mechanics", 2 ] ], "time": "60 m", "using": [ [ "repair_welding_standard", 1 ] ] }
+    },
+    "flags": [ "ROOF", "ROOF_CLIMB" ],
+    "breaks_into": "ig_vp_sheet_metal",
+    "damage_reduction": { "all": 20 },
+    "variants": [ { "symbols": "H", "symbols_broken": "x" } ]
   }
 ]

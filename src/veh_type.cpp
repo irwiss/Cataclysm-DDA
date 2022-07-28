@@ -130,6 +130,7 @@ static const std::unordered_map<std::string, vpart_bitflags> vpart_bitflag_map =
     { "RAIL", VPFLAG_RAIL },
     { "TURRET_CONTROLS", VPFLAG_TURRET_CONTROLS },
     { "ROOF", VPFLAG_ROOF },
+    { "ROOF_CLIMB", VPFLAG_ROOF_CLIMB },
     { "CABLE_PORTS", VPFLAG_CABLE_PORTS },
 };
 
