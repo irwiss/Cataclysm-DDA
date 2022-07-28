@@ -13006,6 +13006,8 @@ void game::climb_down( const tripoint &examp )
     bool web_rappel = you.has_flag( json_flag_WEB_RAPPEL );
     const int climb_cost = you.climbing_cost( where, examp );
     const float fall_mod = you.fall_damage_mod();
+    const std::optional<vpart_reference> veh_roof_ladder = here.veh_at( you.pos() + tripoint_below )
+            .part_with_feature( VPFLAG_ROOF_CLIMB, true );
     add_msg_debug( debugmode::DF_IEXAMINE, "Climb cost %d", climb_cost );
     add_msg_debug( debugmode::DF_IEXAMINE, "Fall damage modifier %.2f", fall_mod );
     const char *query_str;
@@ -13068,6 +13070,9 @@ void game::climb_down( const tripoint &examp )
             web.z--;
         }
         g->vertical_move( -height, true );
+    } else if( veh_roof_ladder ) {
+        you.add_msg_if_player( _( "You use the %s to climb down." ), veh_roof_ladder->info().name() );
+        g->vertical_move( -1, true );
     } else if( has_grapnel ) {
         you.add_msg_if_player( _( "You tie the rope around your waist and begin to climb down." ) );
         g->vertical_move( -1, true );
