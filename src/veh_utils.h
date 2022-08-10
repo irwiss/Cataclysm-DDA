@@ -6,6 +6,7 @@
 #include <optional>
 #include <vector>
 
+#include "color.h"
 #include "input.h"
 #include "type_id.h"
 
@@ -35,8 +36,11 @@ bool repair_part( vehicle &veh, vehicle_part &pt, Character &who );
 struct veh_menu_item {
     std::string _text;
     std::string _desc;
+    int _symbol = 0;
+    nc_color _symbol_color = get_all_colors().get( def_c_light_gray );
     std::optional<tripoint> _location = std::nullopt;
     bool _enabled = true;
+    bool _selected = true;
     bool _check_theft = true;
     bool _check_locked = true;
     bool _keep_menu_open = false;
@@ -44,10 +48,14 @@ struct veh_menu_item {
     std::optional<std::string> _hotkey_action = std::nullopt;
     std::optional<input_event> _hotkey_event = std::nullopt;
     std::function<void()> _on_submit;
+    std::function<void()> _on_select;
 
     veh_menu_item &text( const std::string &text );
     veh_menu_item &desc( const std::string &desc );
+    veh_menu_item &symbol( int symbol );
+    veh_menu_item &symbol_color( nc_color symbol_color );
     veh_menu_item &enable( bool enable );
+    veh_menu_item &select( bool select );
     veh_menu_item &skip_theft_check( bool skip_theft_check = true );
     veh_menu_item &skip_locked_check( bool skip_locked_check = true );
     veh_menu_item &hotkey( char hotkey_char );
@@ -55,6 +63,7 @@ struct veh_menu_item {
     veh_menu_item &hotkey( const input_event &ev );
     veh_menu_item &hotkey_auto();
     veh_menu_item &on_submit( const std::function<void()> &on_submit );
+    veh_menu_item &on_select( const std::function<void()> &on_select );
     veh_menu_item &keep_menu_open( bool keep_menu_open = true );
     veh_menu_item &location( const std::optional<tripoint> &location );
 };
@@ -70,6 +79,7 @@ class veh_menu
 
         size_t get_items_size() const;
         std::vector<veh_menu_item> get_items() const;
+        void sort( const std::function<int( const veh_menu_item &a, const veh_menu_item &b )> comparer );
 
         int desc_lines_hint = 0;
 
@@ -87,7 +97,7 @@ class veh_menu
         std::vector<uilist_entry> get_uilist_entries() const;
         std::vector<tripoint> get_locations() const;
 
-        int last_selected = 0;
+        int last_selected = -1;
 };
 
 #endif // CATA_SRC_VEH_UTILS_H

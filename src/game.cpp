@@ -13270,3 +13270,8 @@ global_variables &get_globals()
 {
     return g->global_variables_instance;
 }
+
+void game::reset_wait_popup()
+{
+    wait_popup.reset();
+}

@@ -1212,6 +1212,8 @@ class game
 
         std::unique_ptr<static_popup> wait_popup; // NOLINT(cata-serialize)
     public:
+        void reset_wait_popup();
+
         /** Used to implement mouse "edge scrolling". Returns a
          *  tripoint which is a vector of the resulting "move", i.e.
          *  (0, 0, 0) if the mouse is not at the edge of the screen,

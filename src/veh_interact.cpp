@@ -68,6 +68,7 @@
 #include "units_utility.h"
 #include "value_ptr.h"
 #include "veh_type.h"
+#include "veh_maintenance_ui.h"
 #include "veh_utils.h"
 #include "vehicle.h"
 #include "vehicle_selector.h"
@@ -224,6 +225,11 @@ void orient_part( vehicle *veh, const vpart_info &vpinfo, int partnum,
 
 player_activity veh_interact::run( vehicle &veh, const point &p )
 {
+    player_activity activity = veh_ui_maintenance( veh )
+                               .start( tripoint( p, veh.global_pos3().z ) );
+    if( activity.name != "go legacy" ) {
+        return activity;
+    }
     veh_interact vehint( veh, p );
     vehint.do_main_loop();
     return vehint.serialize_activity();

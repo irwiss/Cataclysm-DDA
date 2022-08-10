@@ -173,9 +173,27 @@ veh_menu_item &veh_menu_item::desc( const std::string &desc )
     return *this;
 }
 
+veh_menu_item &veh_menu_item::symbol( const int symbol )
+{
+    this->_symbol = symbol;
+    return *this;
+}
+
+veh_menu_item &veh_menu_item::symbol_color( const nc_color symbol_color )
+{
+    this->_symbol_color = symbol_color;
+    return *this;
+}
+
 veh_menu_item &veh_menu_item::enable( const bool enable )
 {
     this->_enabled = enable;
+    return *this;
+}
+
+veh_menu_item &veh_menu_item::select( const bool select )
+{
+    this->_selected = select;
     return *this;
 }
 
@@ -250,6 +268,12 @@ veh_menu_item &veh_menu_item::on_submit( const std::function<void()> &on_submit 
     return *this;
 }
 
+veh_menu_item &veh_menu_item::on_select( const std::function<void()> &on_select )
+{
+    this->_on_select = on_select;
+    return *this;
+}
+
 veh_menu_item &veh_menu_item::keep_menu_open( const bool keep_menu_open )
 {
     this->_keep_menu_open = keep_menu_open;
@@ -290,6 +314,12 @@ std::vector<veh_menu_item> veh_menu::get_items() const
     return items;
 }
 
+void veh_menu::sort( const std::function<int( const veh_menu_item &a, const veh_menu_item &b )>
+                     comparer )
+{
+    std::sort( items.begin(), items.end(), comparer );
+}
+
 std::vector<tripoint> veh_menu::get_locations() const
 {
     std::vector<tripoint> locations;
@@ -305,7 +335,7 @@ std::vector<tripoint> veh_menu::get_locations() const
 
 void veh_menu::reset( bool keep_last_selected )
 {
-    last_selected = keep_last_selected ? last_selected : 0;
+    last_selected = keep_last_selected ? last_selected : -1;
     items.clear();
 }
 
@@ -328,6 +358,10 @@ std::vector<uilist_entry> veh_menu::get_uilist_entries() const
         entry.retval = static_cast<int>( i );
         entry.desc = it._desc;
         entry.enabled = it._enabled;
+        if( it._symbol != 0 ) {
+            entry.extratxt.color = it._symbol_color;
+            entry.extratxt.sym = it._symbol;
+        }
 
         if( it._check_locked && veh.is_locked ) {
             entry.enabled = false;
@@ -342,6 +376,24 @@ std::vector<uilist_entry> veh_menu::get_uilist_entries() const
 
     return entries;
 }
+
+class veh_menu_cb : public pointmenu_cb
+{
+    public:
+        explicit veh_menu_cb( const std::vector<tripoint> &pts ) : pointmenu_cb( pts ) { }
+
+        std::function<void()> on_select;
+    private:
+
+        void select( uilist *menu ) override {
+            pointmenu_cb::select( menu );
+            if( on_select ) {
+                on_select();
+                map &m = get_map();
+                m.invalidate_map_cache( m.get_abs_sub().z() );
+            }
+        }
+};
 
 bool veh_menu::query()
 {
@@ -369,15 +421,28 @@ bool veh_menu::query()
     menu.hilight_disabled = true;
 
     const std::vector<tripoint> locations = get_locations();
-    pointmenu_cb callback( locations );
+    veh_menu_cb cb( locations );
+
+    cb.on_select = [this, &menu]() {
+        items[menu.selected]._on_select();
+    };
+
     if( locations.size() == items.size() ) { // all items have valid location attached
-        menu.callback = &callback;
+        menu.callback = &cb;
         menu.w_x_setup = 4; // move menu to the left so more space around vehicle is visible
     } else {
         menu.callback = nullptr;
     }
 
-    menu.selected = last_selected;
+    if( last_selected >= 0 ) { // have selection from previous query
+        menu.selected = std::max( static_cast<int>( items.size() ), last_selected );
+    } else { // find first element with select enabled
+        for( menu.selected = 0; menu.selected < static_cast<int>( items.size() ); menu.selected++ ) {
+            if( items[menu.selected]._selected ) {
+                break; // found first selected element
+            }
+        }
+    }
     menu.query();
     last_selected = menu.selected;
 
