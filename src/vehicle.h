@@ -1054,6 +1054,13 @@ class vehicle
         // merges vehicles together by copying parts, does not account for any vehicle complexities
         bool merge_vehicle_parts( vehicle *veh );
 
+        // @returns vehicles available to load on the flatbed
+        std::map<vehicle *, std::pair<point, std::string>> get_vehicles_available_to_load() const;
+        // @returns vehicle names available to unload from the flatbed
+        std::set<std::string> get_vehicles_available_to_unload() const;
+        // Builds flatbed menu actions
+        void build_flatbed_menu( veh_menu &menu ) const;
+
         /**
          * @param handler A class that receives various callbacks, e.g. for placing items.
          * This handler is different when called during mapgen (when items need to be placed
@@ -1067,8 +1074,13 @@ class vehicle
         // also called by remove_fake_parts
         bool do_remove_part_actual();
 
-        // remove a vehicle specified by a list of part indices
-        bool remove_carried_vehicle( const std::vector<int> &carried_parts, const std::vector<int> &racks );
+        /// @brief remove a vehicle specified by a list of part indices
+        /// @param carried_parts parts to detach
+        /// @param racks rack or flatbed parts to clear carrying flag from
+        /// @param pivot_override if not nullopt this is the pivot
+        /// @return true if successfully unloaded
+        bool remove_carried_vehicle( const std::vector<int> &carried_parts, const std::vector<int> &racks,
+                                     const cata::optional<tripoint_bub_ms> &pivot_override = cata::nullopt );
         // split the current vehicle into up to four vehicles if they have no connection other
         // than the structure part at exclude
         bool find_and_split_vehicles( map &here, std::set<int> exclude );

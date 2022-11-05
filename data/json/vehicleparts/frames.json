@@ -129,6 +129,16 @@
     }
   },
   {
+    "id": "flatbed",
+    "type": "vehicle_part",
+    "copy-from": "frame",
+    "name": { "str": "flatbed" },
+    "description": "A metal flatbed trunk.",
+    "looks_like": "aisle",
+    "delete": { "flags": [ "MOUNTABLE", "INITIAL_PART" ] },
+    "extend": { "flags": [ "AISLE", "FLATBED" ] }
+  },
+  {
     "id": "frame_wood",
     "type": "vehicle_part",
     "copy-from": "frame_abstract",

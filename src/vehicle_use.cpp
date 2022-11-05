@@ -2209,6 +2209,10 @@ void vehicle::build_interact_menu( veh_menu &menu, const tripoint &p, bool with_
             get_avatar().assign_activity( folding_act );
         } );
     }
+
+    if( vp.avail_part_with_feature( "FLATBED" ) ) {
+        build_flatbed_menu( menu );
+    }
 }
 
 void vehicle::interact_with( const tripoint &p, bool with_pickup )

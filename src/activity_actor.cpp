@@ -107,6 +107,8 @@ static const activity_id ACT_DROP( "ACT_DROP" );
 static const activity_id ACT_EAT_MENU( "ACT_EAT_MENU" );
 static const activity_id ACT_EBOOKSAVE( "ACT_EBOOKSAVE" );
 static const activity_id ACT_FIRSTAID( "ACT_FIRSTAID" );
+static const activity_id ACT_FLATBED_LOADING( "ACT_FLATBED_LOADING" );
+static const activity_id ACT_FLATBED_UNLOADING( "ACT_FLATBED_UNLOADING" );
 static const activity_id ACT_FORAGE( "ACT_FORAGE" );
 static const activity_id ACT_FURNITURE_MOVE( "ACT_FURNITURE_MOVE" );
 static const activity_id ACT_GUNMOD_ADD( "ACT_GUNMOD_ADD" );
@@ -7159,6 +7161,8 @@ deserialize_functions = {
     { ACT_DROP, &drop_activity_actor::deserialize },
     { ACT_EBOOKSAVE, &ebooksave_activity_actor::deserialize },
     { ACT_FIRSTAID, &firstaid_activity_actor::deserialize },
+    { ACT_FLATBED_LOADING, &flatbed_loading_activity_actor::deserialize },
+    { ACT_FLATBED_UNLOADING, &flatbed_unloading_activity_actor::deserialize },
     { ACT_FORAGE, &forage_activity_actor::deserialize },
     { ACT_FURNITURE_MOVE, &move_furniture_activity_actor::deserialize },
     { ACT_GUNMOD_ADD, &gunmod_add_activity_actor::deserialize },

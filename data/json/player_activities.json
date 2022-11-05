@@ -143,6 +143,28 @@
     "auto_needs": false
   },
   {
+    "id": "ACT_FLATBED_LOADING",
+    "type": "activity_type",
+    "activity_level": "LIGHT_EXERCISE",
+    "verb": "loading a vehicle onto flatbed",
+    "rooted": true,
+    "based_on": "time",
+    "no_resume": true,
+    "refuel_fires": false,
+    "auto_needs": false
+  },
+  {
+    "id": "ACT_FLATBED_UNLOADING",
+    "type": "activity_type",
+    "activity_level": "LIGHT_EXERCISE",
+    "verb": "unloading a vehicle onto flatbed",
+    "rooted": true,
+    "based_on": "time",
+    "no_resume": true,
+    "refuel_fires": false,
+    "auto_needs": false
+  },
+  {
     "id": "ACT_MULTIPLE_CHOP_PLANKS",
     "type": "activity_type",
     "activity_level": "EXTRA_EXERCISE",

@@ -1969,11 +1969,13 @@ void vehicle::part_removal_cleanup()
 }
 
 bool vehicle::remove_carried_vehicle( const std::vector<int> &carried_parts,
-                                      const std::vector<int> &racks )
+                                      const std::vector<int> &racks,
+                                      const cata::optional<tripoint_bub_ms> &pivot_override )
 {
     if( carried_parts.empty() || racks.empty() ) {
         return false;
     }
+    const vpart_info &rack_type = part( racks[0] ).info();
     std::optional<vehicle_part::carried_part_data> carried_pivot;
     tripoint pivot_pos;
     for( int carried_part : carried_parts ) {
@@ -1984,6 +1986,9 @@ bool vehicle::remove_carried_vehicle( const std::vector<int> &carried_parts,
             pivot_pos = global_part_pos3( carried_part );
             break;
         }
+    }
+    if( pivot_override ) {
+        pivot_pos = pivot_override->raw();
     }
     if( !carried_pivot.has_value() ) {
         debugmsg( "unracking failed: couldn't find pivot of carried vehicle" );
@@ -2003,8 +2008,8 @@ bool vehicle::remove_carried_vehicle( const std::vector<int> &carried_parts,
     map &here = get_map();
     vehicle *new_vehicle = here.add_vehicle( vehicle_prototype_none, pivot_pos, new_dir );
     if( new_vehicle == nullptr ) {
-        add_msg_debug( debugmode::DF_VEHICLE, "Unable to unload bike rack, host face %d, new_dir %d!",
-                       to_degrees( face.dir() ), to_degrees( new_dir ) );
+        add_msg_debug( debugmode::DF_VEHICLE, "Unable to unload %s, host face %d, new_dir %d!",
+                       rack_type.get_id().str(), to_degrees( face.dir() ), to_degrees( new_dir ) );
         return false;
     }
 
@@ -2043,7 +2048,7 @@ bool vehicle::remove_carried_vehicle( const std::vector<int> &carried_parts,
     }
     if( split_vehicles( here, { carried_parts }, { new_vehicle }, { new_mounts } ) ) {
         //~ %s is the vehicle being loaded onto the bicycle rack
-        add_msg( _( "You unload the %s from the bike rack." ), new_vehicle->name );
+        add_msg( _( "You unload the %s from the %s." ), new_vehicle->name, rack_type.name() );
         bool tracked_parts = false; // if any of the unracked vehicle parts carry a tracked_flag
         for( vehicle_part &part : new_vehicle->parts ) {
             tracked_parts |= part.has_flag( vp_flag::tracked_flag );
@@ -2081,7 +2086,7 @@ bool vehicle::remove_carried_vehicle( const std::vector<int> &carried_parts,
             parts[rack_part].set_flag( vp_flag::tracked_flag );
         }
         //~ %s is the vehicle being loaded onto the bicycle rack
-        add_msg( m_bad, _( "You can't unload the %s from the bike rack." ), new_vehicle->name );
+        add_msg( m_bad, _( "You can't unload the %s from the %s." ), new_vehicle->name, rack_type.name() );
         return false;
     }
 }
@@ -5844,7 +5849,13 @@ void vehicle::refresh( const bool remove_fakes )
     struct sort_veh_part_vector {
         vehicle *veh;
         inline bool operator()( const int p1, const int p2 ) const {
-            return veh->part_info( p1 ).list_order < veh->part_info( p2 ).list_order;
+            const vehicle_part vp1 = veh->part( p1 );
+            const vehicle_part vp2 = veh->part( p1 );
+            const bool p1_carried = vp1.has_flag( vehicle_part::carried_flag );
+            const bool p2_carried = vp2.has_flag( vehicle_part::carried_flag );
+            return p1_carried == p2_carried
+                   ? ( vp1.info().list_order < vp2.info().list_order )
+                   : p1_carried > p2_carried;
         }
     } svpv = { this };
 

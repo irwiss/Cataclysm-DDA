@@ -399,6 +399,71 @@ class bikerack_unracking_activity_actor : public activity_actor
         static std::unique_ptr<activity_actor> deserialize( JsonValue &jsin );
 };
 
+class flatbed_loading_activity_actor : public activity_actor
+{
+    private:
+        int moves_total = to_moves<int>( 5_seconds );
+        tripoint_bub_ms parent_vehicle_pos;
+        tripoint_bub_ms loaded_vehicle_pos;
+        std::string loaded_vehicle_name;
+
+        explicit flatbed_loading_activity_actor() = default;
+
+        /// @param check_only if true only run the check, don't load
+        /// @return true if loading is possible
+        bool load_vehicle( bool check_only );
+    public:
+        explicit flatbed_loading_activity_actor( const vehicle &parent_vehicle,
+                const vehicle &racked_vehicle );
+
+        activity_id get_type() const override {
+            return activity_id( "ACT_FLATBED_LOADING" );
+        }
+
+        void start( player_activity &act, Character &who ) override;
+        void do_turn( player_activity &act, Character &who ) override;
+        void finish( player_activity &act, Character &who ) override;
+
+        std::unique_ptr<activity_actor> clone() const override {
+            return std::make_unique<flatbed_loading_activity_actor>( *this );
+        }
+
+        void serialize( JsonOut &jsout ) const override;
+        static std::unique_ptr<activity_actor> deserialize( JsonValue &jsin );
+};
+
+class flatbed_unloading_activity_actor : public activity_actor
+{
+    private:
+        int moves_total = to_moves<int>( 5_seconds );
+        tripoint_bub_ms parent_vehicle_pos;
+        std::string unloaded_vehicle_name;
+
+        explicit flatbed_unloading_activity_actor() = default;
+
+        /// @param check_only if true only run the check, don't unload
+        /// @return true if unloading is possible
+        bool unload_vehicle( Character &who, bool check_only );
+    public:
+        explicit flatbed_unloading_activity_actor( const vehicle &parent_vehicle,
+                const std::string &unloaded_name );
+
+        activity_id get_type() const override {
+            return activity_id( "ACT_FLATBED_UNLOADING" );
+        }
+
+        void start( player_activity &act, Character &who ) override;
+        void do_turn( player_activity &act, Character &who ) override;
+        void finish( player_activity &act, Character &who ) override;
+
+        std::unique_ptr<activity_actor> clone() const override {
+            return std::make_unique<flatbed_unloading_activity_actor>( *this );
+        }
+
+        void serialize( JsonOut &jsout ) const override;
+        static std::unique_ptr<activity_actor> deserialize( JsonValue &jsin );
+};
+
 class read_activity_actor : public activity_actor
 {
     public:
