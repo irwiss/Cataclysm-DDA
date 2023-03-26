@@ -19,7 +19,7 @@ class window;
 
 enum action_id : int;
 
-enum defense_style {
+enum defense_style : int32_t {
     DEFENSE_CUSTOM = 0,
     DEFENSE_EASY,
     DEFENSE_MEDIUM,
@@ -33,7 +33,7 @@ enum defense_style {
     NUM_DEFENSE_STYLES
 };
 
-enum defense_location {
+enum defense_location : int32_t {
     DEFLOC_NULL = -1,
     DEFLOC_HOSPITAL,
     DEFLOC_WORKS,
@@ -43,7 +43,7 @@ enum defense_location {
     NUM_DEFENSE_LOCATIONS
 };
 
-enum caravan_category {
+enum caravan_category : int32_t {
     CARAVAN_CART = 0,
     CARAVAN_MELEE,
     CARAVAN_RANGED,
