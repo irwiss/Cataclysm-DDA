@@ -5207,7 +5207,7 @@ Character::comfort_response_t Character::base_comfort_value( const tripoint &p )
     bool watersleep = has_trait( trait_WATERSLEEP );
 
     map &here = get_map();
-    const optional_vpart_position vp = here.veh_at( p );
+    const optional_vpart_position ovp = here.veh_at( p );
     const maptile tile = here.maptile_at( p );
     const trap &trap_at_pos = tile.get_trap_t();
     const ter_id ter_at_pos = tile.get_ter();
@@ -5220,12 +5220,9 @@ Character::comfort_response_t Character::base_comfort_value( const tripoint &p )
         if( in_shell ) { // NOLINT(bugprone-branch-clone)
             comfort += 1 + static_cast<int>( comfort_level::slightly_comfortable );
             // Note: shelled individuals can still use sleeping aids!
-        } else if( vp ) {
-            const std::optional<vpart_reference> carg = vp.part_with_feature( "CARGO", false );
-            const std::optional<vpart_reference> board = vp.part_with_feature( "BOARDABLE", true );
-            if( carg ) {
-                const vehicle_stack items = vp->vehicle().get_items( carg->part_index() );
-                for( const item &items_it : items ) {
+        } else if( ovp ) {
+            if( const std::optional<vpart_reference> cargo = ovp.cargo() ) {
+                for( const item &items_it : cargo->items() ) {
                     if( items_it.has_flag( flag_SLEEP_AID ) ) {
                         // Note: BED + SLEEP_AID = 9 pts, or 1 pt below very_comfortable
                         comfort += 1 + static_cast<int>( comfort_level::slightly_comfortable );
@@ -5254,12 +5251,12 @@ Character::comfort_response_t Character::base_comfort_value( const tripoint &p )
                     }
                 }
             }
-            if( board ) {
+            if( const std::optional<vpart_reference> board = ovp.part_with_feature( "BOARDABLE", true ) ) {
                 comfort += board->info().comfort;
             } else {
                 comfort -= here.move_cost( p );
             }
-            if( vp->vehicle().enclosed_at( p ) && get_size() == creature_size::huge ) {
+            if( ovp->vehicle().enclosed_at( p ) && get_size() == creature_size::huge ) {
                 comfort = static_cast<int>( comfort_level::impossible );
             }
         }
@@ -5315,7 +5312,7 @@ Character::comfort_response_t Character::base_comfort_value( const tripoint &p )
             comfort += static_cast<int>( comfort_level::very_comfortable );
         }
     } else if( plantsleep ) {
-        if( vp || furn_at_pos != f_null ) {
+        if( ovp || furn_at_pos != f_null ) {
             // Sleep ain't happening in a vehicle or on furniture
             comfort = static_cast<int>( comfort_level::impossible );
         } else {
@@ -8498,17 +8495,16 @@ void Character::migrate_items_to_storage( bool disintegrate )
 std::string Character::is_snuggling() const
 {
     map &here = get_map();
-    auto begin = here.i_at( pos() ).begin();
-    auto end = here.i_at( pos() ).end();
+    item_stack::iterator begin = here.i_at( pos() ).begin();
+    item_stack::iterator end = here.i_at( pos() ).end();
 
     if( in_vehicle ) {
-        if( const std::optional<vpart_reference> vp = here.veh_at( pos() ).part_with_feature( VPFLAG_CARGO,
-                false ) ) {
-            vehicle *const veh = &vp->vehicle();
-            const int cargo = vp->part_index();
-            if( !veh->get_items( cargo ).empty() ) {
-                begin = veh->get_items( cargo ).begin();
-                end = veh->get_items( cargo ).end();
+        if( const std::optional<vpart_reference> ovp = here.veh_at( pos() )
+                .part_with_feature( VPFLAG_CARGO, false ) ) {
+            vehicle_stack cargo = ovp->vehicle().get_items( ovp->part() );
+            if( !cargo.empty() ) {
+                begin = cargo.begin();
+                end = cargo.end();
             }
         }
     }
@@ -8657,15 +8653,11 @@ int Character::floor_item_warmth( const tripoint &pos )
     };
 
     map &here = get_map();
-
-    if( !!here.veh_at( pos ) ) {
-        if( const std::optional<vpart_reference> vp = here.veh_at( pos ).part_with_feature( VPFLAG_CARGO,
-                false ) ) {
-            vehicle *const veh = &vp->vehicle();
-            const int cargo = vp->part_index();
-            vehicle_stack vehicle_items = veh->get_items( cargo );
-            warm( vehicle_items );
-        }
+    const std::optional<vpart_reference> ovp_cargo = here.veh_at( pos )
+            .part_with_feature( VPFLAG_CARGO, false );
+    if( ovp_cargo ) {
+        vehicle_stack vehicle_items = ovp_cargo->vehicle().get_items( ovp_cargo->part() );
+        warm( vehicle_items );
         return item_warmth;
     }
     map_stack floor_items = here.i_at( pos );

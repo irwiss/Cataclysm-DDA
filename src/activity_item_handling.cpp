@@ -956,11 +956,8 @@ static bool are_requirements_nearby(
         }
 
         if( !in_loot_zones ) {
-            if( const std::optional<vpart_reference> vp = here.veh_at( elem ).part_with_feature( "CARGO",
-                    false ) ) {
-                vehicle &src_veh = vp->vehicle();
-                int src_part = vp->part_index();
-                for( item &it : src_veh.get_items( src_part ) ) {
+            if( const std::optional<vpart_reference> ovp = here.veh_at( elem ).cargo() ) {
+                for( item &it : ovp->items() ) {
                     temp_inv.add_item_ref( it );
                 }
             }
@@ -1770,13 +1767,10 @@ static bool tidy_activity( Character &you, const tripoint_bub_ms &src_loc,
     if( loot_src_lot == tripoint_bub_ms() ) {
         return false;
     }
-    if( const std::optional<vpart_reference> vp = here.veh_at(
-                src_loc ).part_with_feature( "CARGO",
-                        false ) ) {
-        vehicle *const src_veh = &vp->vehicle();
-        int const src_part = vp->part_index();
-        vehicle_stack stack = src_veh->get_items( src_part );
-        _tidy_move_items( you, stack, src_loc, loot_src_lot, src_veh, src_part,
+    if( const std::optional<vpart_reference> ovp = here.veh_at( src_loc ).cargo() ) {
+        vehicle &src_veh = ovp->vehicle();
+        vehicle_stack stack = src_veh.get_items( ovp->part() );
+        _tidy_move_items( you, stack, src_loc, loot_src_lot, &src_veh, ovp->part_index(),
                           activity_to_restore );
     }
     map_stack stack = here.i_at( src_loc );
@@ -1809,16 +1803,13 @@ static bool fetch_activity(
     map_stack items_there = here.i_at( src_loc );
     vehicle *src_veh = nullptr;
     int src_part = 0;
-    if( const std::optional<vpart_reference> vp = here.veh_at( src_loc ).part_with_feature( "CARGO",
-            false ) ) {
-        src_veh = &vp->vehicle();
-        src_part = vp->part_index();
-    }
     const units::volume volume_allowed = you.volume_capacity() - you.volume_carried();
     const units::mass weight_allowed = you.weight_capacity() - you.weight_carried();
     // TODO: vehicle_stack and map_stack into one loop.
-    if( src_veh ) {
-        for( item &veh_elem : src_veh->get_items( src_part ) ) {
+    if( const std::optional<vpart_reference> ovp = here.veh_at( src_loc ).cargo() ) {
+        src_veh = &ovp->vehicle();
+        src_part = ovp->part_index();
+        for( item &veh_elem : ovp->items() ) {
             for( auto elem : mental_map_2 ) {
                 if( std::get<0>( elem ) == src_loc && veh_elem.typeId() == std::get<1>( elem ) ) {
                     if( !you.backlog.empty() && you.backlog.front().id() == ACT_MULTIPLE_CONSTRUCTION ) {
@@ -2028,10 +2019,9 @@ void activity_on_turn_move_loot( player_activity &act, Character &you )
             }
 
             //nothing to sort?
-            const std::optional<vpart_reference> vp = here.veh_at( src_loc ).part_with_feature( "CARGO",
-                    false );
-            if( ( !vp || vp->vehicle().get_items( vp->part_index() ).empty() )
-                && here.i_at( src_loc ).empty() ) {
+            const std::optional<vpart_reference> ovp = here.veh_at( src_loc ).cargo();
+            const bool no_cargo_in_vehicle = !ovp || ovp->items().empty();
+            if( no_cargo_in_vehicle && here.i_at( src_loc ).empty() ) {
                 continue;
             }
 
@@ -2100,11 +2090,10 @@ void activity_on_turn_move_loot( player_activity &act, Character &you )
         //Check source for cargo part
         //map_stack and vehicle_stack are different types but inherit from item_stack
         // TODO: use one for loop
-        if( const std::optional<vpart_reference> vp = here.veh_at( src_loc ).part_with_feature( "CARGO",
-                false ) ) {
-            src_veh = &vp->vehicle();
-            src_part = vp->part_index();
-            for( item &it : src_veh->get_items( src_part ) ) {
+        if( const std::optional<vpart_reference> ovp = here.veh_at( src_loc ).cargo() ) {
+            src_veh = &ovp->vehicle();
+            src_part = ovp->part_index();
+            for( item &it : ovp->items() ) {
                 items.emplace_back( &it, true );
             }
         } else {
@@ -3224,16 +3213,11 @@ int get_auto_consume_moves( Character &you, const bool food )
             continue;
         }
 
-        const optional_vpart_position vp = here.veh_at( here.getlocal( loc ) );
         std::vector<item *> items_here;
-        if( vp ) {
-            vehicle &veh = vp->vehicle();
-            int index = veh.part_with_feature( vp->mount(), "CARGO", false );
-            if( index >= 0 ) {
-                vehicle_stack vehitems = veh.get_items( index );
-                for( item &it : vehitems ) {
-                    items_here.push_back( &it );
-                }
+        const std::optional<vpart_reference> ovp = here.veh_at( here.getlocal( loc ) ).cargo();
+        if( ovp ) {
+            for( item &it : ovp->items() ) {
+                items_here.push_back( &it );
             }
         } else {
             map_stack mapitems = here.i_at( here.getlocal( loc ) );
@@ -3289,8 +3273,8 @@ int get_auto_consume_moves( Character &you, const bool food )
                                 here.getlocal( loc ) ), 1 );
             consume_moves += to_moves<int>( you.get_consume_time( comest ) );
             item_location item_loc;
-            if( vp ) {
-                item_loc = item_location( vehicle_cursor( vp->vehicle(), vp->part_index() ), &comest );
+            if( ovp ) {
+                item_loc = item_location( vehicle_cursor( ovp->vehicle(), ovp->part_index() ), &comest );
             } else {
                 item_loc = item_location( map_cursor( here.getlocal( loc ) ), &comest );
             }

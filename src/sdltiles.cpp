@@ -2832,7 +2832,7 @@ static void CheckMessages()
                                     actions.insert( ACTION_CLOSE );
                                 }
                                 const int cargopart = veh->part_with_feature( vp->mount(), "CARGO", true );
-                                if( cargopart >= 0 && ( !veh->get_items( cargopart ).empty() ) ) {
+                                if( cargopart >= 0 && ( !veh->get_items( veh->part( cargopart ) ).empty() ) ) {
                                     actions.insert( ACTION_PICKUP );
                                 }
                             }

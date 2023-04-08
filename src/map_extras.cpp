@@ -327,6 +327,16 @@ static bool mx_house_wasp( map &m, const tripoint &/*loc*/ )
     return true;
 }
 
+static void delete_cargo_at_mount_point( vehicle &veh, const point &pt )
+{
+    for( const int part_idx : veh.parts_at_relative( pt, true ) ) {
+        vehicle_stack here = veh.get_items( veh.part( part_idx ) );
+        for( auto iter = here.begin(); iter != here.end(); ) {
+            iter = here.erase( iter );
+        }
+    }
+}
+
 static bool mx_helicopter( map &m, const tripoint &abs_sub )
 {
     point c( rng( 6, SEEX * 2 - 7 ), rng( 6, SEEY * 2 - 7 ) );
@@ -422,13 +432,7 @@ static bool mx_helicopter( map &m, const tripoint &abs_sub )
                     }
 
                     // Delete the items that would have spawned here from a "corpse"
-                    for( int sp : wreckage->parts_at_relative( vp.mount(), true ) ) {
-                        vehicle_stack here = wreckage->get_items( sp );
-
-                        for( auto iter = here.begin(); iter != here.end(); ) {
-                            iter = here.erase( iter );
-                        }
-                    }
+                    delete_cargo_at_mount_point( *wreckage, vp.mount() );
                 }
                 break;
             case 4:
@@ -444,13 +448,7 @@ static bool mx_helicopter( map &m, const tripoint &abs_sub )
                     }
 
                     // Delete the items that would have spawned here from a "corpse"
-                    for( int sp : wreckage->parts_at_relative( vp.mount(), true ) ) {
-                        vehicle_stack here = wreckage->get_items( sp );
-
-                        for( auto iter = here.begin(); iter != here.end(); ) {
-                            iter = here.erase( iter );
-                        }
-                    }
+                    delete_cargo_at_mount_point( *wreckage, vp.mount() );
                 }
                 break;
             case 6:
@@ -460,13 +458,7 @@ static bool mx_helicopter( map &m, const tripoint &abs_sub )
                     m.place_spawns( GROUP_MIL_PILOT, 1, pos.xy(), pos.xy(), 1, true );
 
                     // Delete the items that would have spawned here from a "corpse"
-                    for( int sp : wreckage->parts_at_relative( vp.mount(), true ) ) {
-                        vehicle_stack here = wreckage->get_items( sp );
-
-                        for( auto iter = here.begin(); iter != here.end(); ) {
-                            iter = here.erase( iter );
-                        }
-                    }
+                    delete_cargo_at_mount_point( *wreckage, vp.mount() );
                 }
                 break;
             case 7:
@@ -2082,12 +2074,12 @@ static bool mx_mayhem( map &m, const tripoint &abs_sub )
         case 3: {
             vehicle *veh = m.add_vehicle( vehicle_prototype_car, point( 18, 12 ), 270_degrees );
 
-            for( const vpart_reference &vp : veh->get_any_parts( "CARGO" ) ) {
-                const size_t p = vp.part_index();
-                for( item &elem : veh->get_items( p ) ) {
-                    if( elem.typeId() == itype_wheel || elem.typeId() == itype_lug_wrench ||
+            for( const vpart_reference &vpr : veh->get_any_parts( VPFLAG_CARGO ) ) {
+                for( item &elem : vpr.items() ) {
+                    if( elem.typeId() == itype_wheel ||
+                        elem.typeId() == itype_lug_wrench ||
                         elem.typeId() == itype_jack_small ) {
-                        veh->remove_item( p, &elem );
+                        veh->remove_item( vpr.part_index(), &elem );
                     }
                 }
             }

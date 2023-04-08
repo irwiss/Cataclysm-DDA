@@ -426,20 +426,20 @@ TEST_CASE( "visitable_remove", "[visitable]" )
     GIVEN( "An adjacent vehicle contains several bottles of water" ) {
         std::vector<tripoint> tiles = closest_points_first( p.pos(), 1 );
         tiles.erase( tiles.begin() ); // player tile
-        tripoint veh = random_entry( tiles );
-        REQUIRE( here.add_vehicle( vehicle_prototype_shopping_cart, veh, 0_degrees, 0, 0 ) );
+        tripoint pos = random_entry( tiles );
+        REQUIRE( here.add_vehicle( vehicle_prototype_shopping_cart, pos, 0_degrees, 0, 0 ) );
 
         REQUIRE( std::count_if( tiles.begin(), tiles.end(), [&here]( const tripoint & e ) {
             return static_cast<bool>( here.veh_at( e ) );
         } ) == 1 );
 
-        const std::optional<vpart_reference> vp = here.veh_at( veh ).part_with_feature( "CARGO", true );
+        const std::optional<vpart_reference> vp = here.veh_at( pos ).cargo();
         REQUIRE( vp );
         vehicle *const v = &vp->vehicle();
         const int part = vp->part_index();
         REQUIRE( part >= 0 );
         // Empty the vehicle of any cargo.
-        v->get_items( part ).clear();
+        vp->items().clear();
         for( int i = 0; i != count; ++i ) {
             v->add_item( part, obj );
         }

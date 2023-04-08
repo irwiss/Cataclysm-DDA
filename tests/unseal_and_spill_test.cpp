@@ -863,8 +863,8 @@ void test_scenario::run()
                                         .part_with_feature( vpart_bitflags::VPFLAG_CARGO, true );
     if( cur_container_loc == container_location::vehicle ) {
         REQUIRE( vp.has_value() );
-        match( vehicle_cursor( vp->vehicle(), vp->part_index() ),
-               vp->vehicle().get_items( vp->part_index() ), vehicle_results );
+        vehicle &veh = vp->vehicle();
+        match( vehicle_cursor( veh, vp->part_index() ), vp->items(), vehicle_results );
     } else {
         REQUIRE( !vp.has_value() );
     }

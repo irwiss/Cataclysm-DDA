@@ -17,6 +17,7 @@ struct input_event;
 class inventory;
 class Character;
 class vehicle;
+class vehicle_stack;
 class vpart_info;
 struct vehicle_part;
 
@@ -126,6 +127,8 @@ class optional_vpart_position : public std::optional<vpart_position>
         std::optional<std::string> get_label() const {
             return has_value() ? value().get_label() : std::nullopt;
         }
+        // returns unbroken part with CARGO flag at this position if exists or nullopt
+        std::optional<vpart_reference> cargo() const;
         std::optional<vpart_reference> part_with_feature( const std::string &f, bool unbroken ) const;
         std::optional<vpart_reference> part_with_feature( vpart_bitflags f, bool unbroken ) const;
         std::optional<vpart_reference> avail_part_with_feature( const std::string &f ) const;
@@ -157,6 +160,8 @@ class vpart_reference : public vpart_position
         vehicle_part &part() const;
         /// See @ref vehicle_part::info
         const vpart_info &info() const;
+        // returns part's item stack
+        vehicle_stack items() const;
         /**
          * Returns whether the part *type* has the given feature.
          * Note that this is different from part flags (which apply to part

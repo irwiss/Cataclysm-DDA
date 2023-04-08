@@ -957,7 +957,7 @@ bool game::start_game()
 
                     // Delete the items that would have spawned here from a "corpse"
                     for( int sp : v.v->parts_at_relative( vp.mount(), true ) ) {
-                        vehicle_stack here = v.v->get_items( sp );
+                        vehicle_stack here = v.v->get_items( v.v->part( sp ) );
 
                         for( auto iter = here.begin(); iter != here.end(); ) {
                             iter = here.erase( iter );

@@ -67,11 +67,11 @@ std::string four_quadrants::to_string() const
                           ( *this )[quadrant::SW], ( *this )[quadrant::NW] );
 }
 
-void map::add_light_from_items( const tripoint &p, const item_stack::iterator &begin,
-                                const item_stack::iterator &end )
+void map::add_light_from_items( const tripoint &p,
+                                const item_stack::const_iterator &begin, const item_stack::const_iterator &end )
 {
     for( auto itm_it = begin; itm_it != end; ++itm_it ) {
-        float ilum = 0.0f; // brightness
+        float ilum = 0.0f;               // brightness
         units::angle iwidth = 0_degrees; // 0-360 degrees. 0 is a circular light_source
         units::angle idir = 0_degrees;   // otherwise, it's a light_arc pointed in this direction
         if( itm_it->getlight( ilum, iwidth, idir ) ) {
@@ -564,16 +564,13 @@ void map::generate_lightmap( const int zlev )
             }
         }
 
-        for( const vpart_reference &vp : v->get_all_parts() ) {
-            const size_t p = vp.part_index();
-            const tripoint pp = vp.pos();
-            if( !inbounds( pp ) ) {
+        for( const vpart_reference &vpr : v->get_any_parts( vpart_bitflags::VPFLAG_CARGO ) ) {
+            const tripoint vppos = vpr.pos();
+            if( !inbounds( vppos ) || vpr.info().has_flag( "COVERED" ) ) {
                 continue;
             }
-            if( vp.has_feature( VPFLAG_CARGO ) && !vp.has_feature( "COVERED" ) ) {
-                add_light_from_items( pp, v->get_items( static_cast<int>( p ) ).begin(),
-                                      v->get_items( static_cast<int>( p ) ).end() );
-            }
+            const vehicle_stack cargo = vpr.items();
+            add_light_from_items( vppos, cargo.begin(), cargo.end() );
         }
     }
 

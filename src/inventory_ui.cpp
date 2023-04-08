@@ -2047,15 +2047,14 @@ void inventory_selector::add_map_items( const tripoint &target )
 
 void inventory_selector::add_vehicle_items( const tripoint &target )
 {
-    const std::optional<vpart_reference> vp =
-        get_map().veh_at( target ).part_with_feature( "CARGO", true );
+    const std::optional<vpart_reference> vp = get_map().veh_at( target ).cargo();
     if( !vp ) {
         return;
     }
     vehicle *const veh = &vp->vehicle();
     const int part = vp->part_index();
-    vehicle_stack items = veh->get_items( part );
-    const std::string name = to_upper_case( remove_color_tags( veh->part( part ).name() ) );
+    vehicle_stack items = vp->items();
+    const std::string name = to_upper_case( remove_color_tags( vp->part().name() ) );
     const item_category vehicle_cat( name, no_translation( name ), 200 );
     _add_map_items( target, vehicle_cat, items, [veh, part]( item & it ) {
         return item_location( vehicle_cursor( *veh, part ), &it );

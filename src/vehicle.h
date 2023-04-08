@@ -173,8 +173,7 @@ class vehicle_stack : public item_stack
         vehicle *myorigin;
         int part_num;
     public:
-        vehicle_stack( cata::colony<item> *newstack, point newloc, vehicle *neworigin, int part ) :
-            item_stack( newstack ), location( newloc ), myorigin( neworigin ), part_num( part ) {}
+        vehicle_stack( vehicle &veh, vehicle_part &vp );
         iterator erase( const_iterator it ) override;
         void insert( const item &newitem ) override;
         int count_limit() const override {
@@ -253,6 +252,7 @@ struct vehicle_part {
         friend vehicle;
         friend class veh_interact;
         friend class vehicle_cursor;
+        friend class vehicle_stack;
         friend item_location;
         friend class turret_data;
 
@@ -1765,8 +1765,8 @@ class vehicle
         bool remove_item( int part, item *it );
         vehicle_stack::iterator remove_item( int part, const vehicle_stack::const_iterator &it );
 
-        vehicle_stack get_items( int part ) const;
-        vehicle_stack get_items( int part );
+        vehicle_stack get_items( vehicle_part &vp );
+        vehicle_stack get_items( const vehicle_part &vp ) const;
         std::vector<item> &get_tools( vehicle_part &vp );
         const std::vector<item> &get_tools( const vehicle_part &vp ) const;
 
