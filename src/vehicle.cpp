@@ -1843,11 +1843,11 @@ bool vehicle::remove_part( const int p, RemovePartHandler &handler )
 
     // if a windshield is removed (usually destroyed) also remove curtains
     // attached to it.
-    if( remove_dependent_part( "WINDOW", "CURTAIN" ) || part_flag( p, VPFLAG_OPAQUE ) ) {
+    if( remove_dependent_part( "WINDOW", "CURTAIN" ) || vpi.has_flag( VPFLAG_OPAQUE ) ) {
         handler.set_transparency_cache_dirty( sm_pos.z );
     }
 
-    if( part_flag( p, VPFLAG_ROOF ) || part_flag( p, VPFLAG_OPAQUE ) ) {
+    if( vpi.has_flag( VPFLAG_ROOF ) || vpi.has_flag( VPFLAG_OPAQUE ) ) {
         handler.set_floor_cache_dirty( sm_pos.z + 1 );
     }
 
@@ -1856,15 +1856,15 @@ bool vehicle::remove_part( const int p, RemovePartHandler &handler )
     remove_dependent_part( "HANDHELD_BATTERY_MOUNT", "NEEDS_HANDHELD_BATTERY_MOUNT" );
 
     // Release any animal held by the part
-    if( parts[p].has_flag( vp_flag::animal_flag ) ) {
-        item base = parts[p].get_base();
+    if( vp.has_flag( vp_flag::animal_flag ) ) {
+        item base = vp.get_base();
         handler.spawn_animal_from_part( base, part_loc );
         parts[p].set_base( std::move( base ) );
         parts[p].remove_flag( vp_flag::animal_flag );
     }
 
     // Update current engine configuration if needed
-    if( part_flag( p, "ENGINE" ) && engines.size() > 1 ) {
+    if( vpi.has_flag( VPFLAG_ENGINE ) && engines.size() > 1 ) {
         bool any_engine_on = false;
 
         for( const int e : engines ) {
@@ -1888,22 +1888,21 @@ bool vehicle::remove_part( const int p, RemovePartHandler &handler )
     const auto lz_iter = loot_zones.find( parts[p].mount );
     const bool no_zone = lz_iter != loot_zones.end();
 
-    if( no_zone && part_flag( p, "CARGO" ) ) {
+    if( no_zone && vpi.has_flag( VPFLAG_CARGO ) ) {
         // Using the key here (instead of the iterator) will remove all zones on
         // this mount points regardless of how many there are
-        loot_zones.erase( parts[p].mount );
+        loot_zones.erase( vp.mount );
         zones_dirty = true;
     }
-    parts[p].removed = true;
-    if( parts[p].has_fake && parts[p].fake_part_at < static_cast<int>( parts.size() ) ) {
-        parts[parts[p].fake_part_at].removed = true;
+    vp.removed = true;
+    if( vp.has_fake && vp.fake_part_at < static_cast<int>( parts.size() ) ) {
+        parts[vp.fake_part_at].removed = true;
     }
 
     handler.removed( *this, p );
 
-    const point &vp_mount = parts[p].mount;
-    const auto iter = labels.find( label( vp_mount ) );
-    if( iter != labels.end() && parts_at_relative( vp_mount, false ).empty() ) {
+    const auto iter = labels.find( label( vp.mount ) );
+    if( iter != labels.end() && parts_at_relative( vp.mount, false ).empty() ) {
         labels.erase( iter );
     }
 
