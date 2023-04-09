@@ -6879,15 +6879,17 @@ bool vehicle::shift_if_needed( map &here )
     return false;
 }
 
-int vehicle::break_off( map &here, int p, int dmg )
+int vehicle::break_off( map &here, vehicle_part &vp, int dmg )
 {
+    const vpart_info &vpi = vp.info();
     /* Already-destroyed part - chance it could be torn off into pieces.
      * Chance increases with damage, and decreases with part max durability
      * (so lights, etc are easily removed; frames and plating not so much) */
-    if( rng( 0, part_info( p ).durability / 10 ) >= dmg ) {
+    if( rng( 0, vpi.durability / 10 ) >= dmg ) {
         return dmg;
     }
-    const tripoint pos = global_part_pos3( p );
+    const int vp_index = index_of_part( &vp, true );
+    const tripoint pos = global_part_pos3( vp );
     const auto scatter_parts = [&]( const vehicle_part & pt ) {
         for( const item &piece : pt.pieces_for_broken_part() ) {
             // inside the loop, so each piece goes to a different place
@@ -6907,12 +6909,13 @@ int vehicle::break_off( map &here, int p, int dmg )
     } else {
         handler_ptr = std::make_unique<MapgenRemovePartHandler>( here );
     }
-    if( part_info( p ).location == part_location_structure ) {
+    if( vpi.location == part_location_structure ) {
         // For structural parts, remove other parts first
-        std::vector<int> parts_in_square = parts_at_relative( parts[p].mount, true );
+        std::vector<int> parts_in_square = parts_at_relative( vp.mount, true );
         for( int index = parts_in_square.size() - 1; index >= 0; index-- ) {
+            vehicle_part &vp_here = part( parts_in_square[index] );
             // Ignore the frame being destroyed
-            if( parts_in_square[index] == p ) {
+            if( &vp_here == &vp ) {
                 continue;
             }
 
@@ -6930,25 +6933,22 @@ int vehicle::break_off( map &here, int p, int dmg )
                 remove_remote_part( parts_in_square[ index ] );
             } else if( parts[ parts_in_square[ index ] ].is_broken() ) {
                 // Tearing off a broken part - break it up
-                add_msg_if_player_sees( pos, m_bad, _( "The %s's %s breaks into pieces!" ), name,
-                                        parts[ parts_in_square[ index ] ].name() );
-                scatter_parts( parts[parts_in_square[index]] );
+                add_msg_if_player_sees( pos, m_bad, _( "The %s's %s breaks into pieces!" ), name, vp.name() );
+                scatter_parts( vp );
             } else {
                 // Intact (but possibly damaged) part - remove it in one piece
-                add_msg_if_player_sees( pos, m_bad, _( "The %1$s's %2$s is torn off!" ), name,
-                                        parts[ parts_in_square[ index ] ].name() );
+                add_msg_if_player_sees( pos, m_bad, _( "The %1$s's %2$s is torn off!" ), name, vp.name() );
                 if( !magic ) {
-                    item part_as_item = parts[parts_in_square[index]].properties_to_item();
-                    here.add_item_or_charges( pos, part_as_item );
+                    here.add_item_or_charges( pos, vp.properties_to_item() );
                 }
             }
             remove_part( parts_in_square[index], *handler_ptr );
         }
         // After clearing the frame, remove it.
-        add_msg_if_player_sees( pos, m_bad, _( "The %1$s's %2$s is destroyed!" ), name, parts[ p ].name() );
-        scatter_parts( parts[p] );
-        remove_part( p, *handler_ptr );
-        find_and_split_vehicles( here, { p } );
+        add_msg_if_player_sees( pos, m_bad, _( "The %1$s's %2$s is destroyed!" ), name, vp.name() );
+        scatter_parts( vp );
+        remove_part( vp_index, *handler_ptr );
+        find_and_split_vehicles( here, { vp_index } );
     } else {
         if( part_flag( p, "TOW_CABLE" ) ) {
             // Tow cables - remove it in one piece, remove remote part, and remove towing data
@@ -6972,15 +6972,18 @@ int vehicle::break_off( map &here, int p, int dmg )
         remove_part( p, *handler_ptr );
 
         // remove parts for which required flags are not present anymore
-        if( !part_info( p ).get_flags().empty() ) {
+        if( !vpi.get_flags().empty() ) {
             const std::vector<int> parts_here = parts_at_relative( position, false );
-            for( const int &part : parts_here ) {
+            for( const int p : parts_here ) {
+                const vehicle_part &vp_here = part( p );
                 bool remove = false;
-                for( const std::string &flag : part_info( part ).get_flags() ) {
-                    if( !json_flag::get( flag ).requires_flag().empty() ) {
+                for( const std::string &flag : vp_here.info().get_flags() ) {
+                    const std::string required_flag = json_flag::get( flag ).requires_flag();
+                    if( !required_flag.empty() ) {
                         remove = true;
-                        for( const int &elem : parts_here ) {
-                            if( part_info( elem ).has_flag( json_flag::get( flag ).requires_flag() ) ) {
+                        for( const int p_other : parts_here ) {
+                            const vehicle_part &vp_other = part( p_other );
+                            if( vp_other.info().has_flag( required_flag ) ) {
                                 remove = false;
                                 continue;
                             }
@@ -7047,7 +7050,7 @@ int vehicle::damage_direct( map &here, vehicle_part &vp, int dmg, const damage_t
     }
     here.set_memory_seen_cache_dirty( vp_pos );
     if( vp.is_broken() ) {
-        return break_off( here, index_of_part( &vp ), dmg );
+        return break_off( here, vp, dmg );
     }
 
     const int threshold = std::min( 200, vpi.durability ) / 10;

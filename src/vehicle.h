@@ -805,7 +805,7 @@ class vehicle
         int damage_direct( map &here, vehicle_part &vp, int dmg,
                            const damage_type_id &type = damage_type_id( "pure" ) );
         // Removes the part, breaks it into pieces and possibly removes parts attached to it
-        int break_off( map &here, int p, int dmg );
+        int break_off( map &here, vehicle_part &vp, int dmg );
         // Returns if it did actually explode
         bool explode_fuel( int p, const damage_type_id &type );
         //damages vehicle controls and security system
