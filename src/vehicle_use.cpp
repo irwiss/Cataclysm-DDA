@@ -1165,9 +1165,10 @@ void vehicle::alarm()
  */
 void vehicle::open( int part_index )
 {
-    if( !part_info( part_index ).has_flag( "OPENABLE" ) ) {
-        debugmsg( "Attempted to open non-openable part %d (%s) on a %s!", part_index,
-                  parts[ part_index ].name(), name );
+    const vehicle_part &vp = part( part_index );
+    if( !vp.info().has_flag( "OPENABLE" ) ) {
+        debugmsg( "Attempted to open non-openable part %d (%s) on a %s!",
+                  part_index, vp.name(), name );
     } else {
         open_or_close( part_index, true );
     }
@@ -1180,9 +1181,10 @@ void vehicle::open( int part_index )
  */
 void vehicle::close( int part_index )
 {
-    if( !part_info( part_index ).has_flag( "OPENABLE" ) ) {
-        debugmsg( "Attempted to close non-closeable part %d (%s) on a %s!", part_index,
-                  parts[ part_index ].name(), name );
+    const vehicle_part &vp = part( part_index );
+    if( !vp.info().has_flag( VPFLAG_OPENABLE ) ) {
+        debugmsg( "Attempted to close non-closeable part %d (%s) on a %s!",
+                  part_index, vp.name(), name );
     } else {
         open_or_close( part_index, false );
     }

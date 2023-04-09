@@ -731,20 +731,18 @@ vehicle *map::move_vehicle( vehicle &veh, const tripoint &dp, const tileray &fac
             if( coll.type == veh_coll_veh ) {
                 continue;
             }
-            int part_num = veh.get_non_fake_part( coll.part );
-
-            const point &collision_point = veh.part( coll.part ).mount;
-            const int coll_dmg = coll.imp;
-
+            const int part_num = veh.get_non_fake_part( coll.part );
             // Shock damage, if the target part is a rotor treat as an aimed hit.
             // don't try to deal damage to invalid part (probably removed or destroyed)
             if( part_num != -1 ) {
-                if( veh.part_info( part_num ).rotor_diameter() > 0 ) {
-                    veh.damage( *this, part_num, coll_dmg, damage_bash, true );
+                const vehicle_part &vp_coll = veh.part( coll.part );
+                const vpart_info &vpi_coll = vp_coll.info();
+                if( vpi_coll.rotor_diameter() > 0 ) {
+                    veh.damage( *this, part_num, coll.imp, damage_bash, true );
                 } else {
-                    impulse += coll_dmg;
-                    veh.damage( *this, part_num, coll_dmg, damage_bash );
-                    veh.damage_all( coll_dmg / 2, coll_dmg, damage_bash, collision_point );
+                    impulse += coll.imp;
+                    veh.damage( *this, part_num, coll.imp, damage_bash );
+                    veh.damage_all( coll.imp / 2, coll.imp, damage_bash, vp_coll.mount );
                 }
             }
         }
@@ -908,13 +906,14 @@ float map::vehicle_vehicle_collision( vehicle &veh, vehicle &veh2,
     const tripoint part1_pos = veh.global_part_pos3( c.part );
     const tripoint part2_pos = veh2.global_part_pos3( c.target_part );
     if( you.sees( part1_pos ) || you.sees( part2_pos ) ) {
+        const vpart_info &vpi1 = veh.part( c.part ).info();
+        const vpart_info &vpi2 = veh2.part( c.target_part ).info();
         //~ %1$s: first vehicle name (without "the")
         //~ %2$s: first part name
         //~ %3$s: second vehicle display name (with "the")
         //~ %4$s: second part name
         add_msg( m_bad, _( "The %1$s's %2$s collides with %3$s's %4$s." ),
-                 veh.name,  veh.part_info( c.part ).name(),
-                 veh2.disp_name(), veh2.part_info( c.target_part ).name() );
+                 veh.name, vpi1.name(), veh2.disp_name(), vpi2.name() );
     }
 
     // Used to calculate the epicenter of the collision.

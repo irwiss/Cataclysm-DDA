@@ -814,6 +814,7 @@ static void terrain_collision_data( const tripoint &p, bool bash_floor,
 veh_collision vehicle::part_collision( int part, const tripoint &p,
                                        bool just_detect, bool bash_floor )
 {
+    const vehicle_part &vp_origin = this->part( part );
     // Vertical collisions need to be handled differently
     // All collisions have to be either fully vertical or fully horizontal for now
     const bool vert_coll = bash_floor || p.z != sm_pos.z;
@@ -855,7 +856,7 @@ veh_collision vehicle::part_collision( int part, const tripoint &p,
     // Typical rotor tip speed in MPH * 100.
     int rotor_velocity = 45600;
     // Non-vehicle collisions can't happen when the vehicle is not moving
-    int &coll_velocity = ( part_info( part ).rotor_diameter() == 0 ) ?
+    int &coll_velocity = ( vp_origin.info().rotor_diameter() == 0 ) ?
                          ( vert_coll ? vertical_velocity : velocity ) :
                          rotor_velocity;
     if( !just_detect && coll_velocity == 0 ) {
@@ -872,7 +873,7 @@ veh_collision vehicle::part_collision( int part, const tripoint &p,
             tripoint end_pos = critter->pos();
             tripoint start_pos;
             const units::angle angle =
-                move.dir() + 45_degrees * ( parts[part].mount.x > pivot_point().x ? -1 : 1 );
+                move.dir() + 45_degrees * ( vp_origin.mount.x > pivot_point().x ? -1 : 1 );
             const std::set<tripoint> &cur_points = get_points( true );
             // push the animal out of way until it's no longer in our vehicle and not in
             // anyone else's position
@@ -892,8 +893,9 @@ veh_collision vehicle::part_collision( int part, const tripoint &p,
     if( armor_part >= 0 ) {
         ret.part = armor_part;
     }
-    const vehicle_part &vp = this->part( ret.part );
+    vehicle_part &vp = this->part( ret.part );
     const vpart_info &vpi = vp.info();
+    const bool vp_is_sharp = vpi.has_flag( "SHARP" );
     // Let's calculate type of collision & mass of object we hit
     float mass2 = 0.0f;
     // e = 0 -> plastic collision
@@ -943,16 +945,16 @@ veh_collision vehicle::part_collision( int part, const tripoint &p,
         return ret;
     }
     stop_autodriving();
-    // Calculate mass AFTER checking for collision
-    //  because it involves iterating over all cargo
+    // Calculate mass AFTER checking for collision because it involves iterating over all cargo
     // Rotors only use rotor mass in calculation.
-    const float mass = ( part_info( ret.part ).rotor_diameter() > 0 ) ?
-                       to_kilogram( parts[ ret.part ].base.weight() ) : to_kilogram( total_mass() );
+    const float mass = vpi.rotor_diameter() > 0
+                       ? to_kilogram( vp.base.weight() )
+                       : to_kilogram( total_mass() );
 
     //Calculate damage resulting from d_E
-    const itype *type = item::find_type( part_info( ret.part ).base_item );
-    const auto &mats = type->materials;
-    float mat_total = type->mat_portion_total == 0 ? 1 : type->mat_portion_total;
+    const itype &type = *vpi.base_item;
+    const auto &mats = type.materials;
+    float mat_total = type.mat_portion_total == 0 ? 1 : type.mat_portion_total;
     float vpart_dens = 0.0f;
     if( !mats.empty() ) {
         for( const std::pair<const material_id, int> &mat_id : mats ) {
@@ -964,16 +966,14 @@ veh_collision vehicle::part_collision( int part, const tripoint &p,
 
     //k=100 -> 100% damage on part
     //k=0 -> 100% damage on obj
-    float material_factor = ( part_dens - vpart_dens ) * 0.5f;
-    material_factor = std::max( -25.0f, std::min( 25.0f, material_factor ) );
+    const float material_factor = std::clamp( part_dens - vpart_dens, -50.0f, 50.0f ) * 0.5f;
     // factor = -25 if mass is much greater than mass2
     // factor = +25 if mass2 is much greater than mass
     const float weight_factor = mass >= mass2 ?
                                 -25 * ( std::log( mass ) - std::log( mass2 ) ) / std::log( mass ) :
                                 25 * ( std::log( mass2 ) - std::log( mass ) ) / std::log( mass2 );
 
-    float k = 50 + material_factor + weight_factor;
-    k = std::max( 10.0f, std::min( 90.0f, k ) );
+    const float k = std::clamp( 50.0f + material_factor + weight_factor, 10.0f, 90.0f );
 
     bool smashed = true;
     const std::string snd = _( "smash!" );
@@ -1064,10 +1064,10 @@ veh_collision vehicle::part_collision( int part, const tripoint &p,
 
             // No blood from hallucinations
             if( !critter->is_hallucination() ) {
-                if( part_flag( ret.part, "SHARP" ) ) {
-                    parts[ret.part].blood += ( 20 + dam ) * 5;
+                if( vp_is_sharp ) {
+                    vp.blood += ( 20 + dam ) * 5;
                 } else if( dam > rng( 10, 30 ) ) {
-                    parts[ret.part].blood += ( 10 + dam / 2 ) * 5;
+                    vp.blood += ( 10 + dam / 2 ) * 5;
                 }
 
                 check_environmental_effects = true;
@@ -1081,12 +1081,12 @@ veh_collision vehicle::part_collision( int part, const tripoint &p,
             if( ph != nullptr ) {
                 ph->hitall( dam, 40, driver );
             } else {
-                const int armor = part_flag( ret.part, "SHARP" ) ?
+                const int armor = vp_is_sharp ?
                                   critter->get_armor_type( damage_cut, bodypart_id( "torso" ) ) :
                                   critter->get_armor_type( damage_bash, bodypart_id( "torso" ) );
                 dam = std::max( 0, dam - armor );
                 critter->apply_damage( driver, bodypart_id( "torso" ), dam );
-                if( part_flag( ret.part, "SHARP" ) ) {
+                if( vp_is_sharp ) {
                     critter->add_effect( effect_source( driver ), effect_bleed, 1_minutes * rng( 1, dam ),
                                          critter->get_random_body_part_of_type( body_part_type::type::torso ) );
                 } else if( dam > 18 && rng( 1, 20 ) > 15 ) {
@@ -1140,15 +1140,15 @@ veh_collision vehicle::part_collision( int part, const tripoint &p,
                 if( time_stunned > 0_turns ) {
                     //~ 1$s - vehicle name, 2$s - part name, 3$s - NPC or monster
                     add_msg( m_warning, _( "Your %1$s's %2$s rams into %3$s and stuns it!" ),
-                             name, parts[ ret.part ].name(), ret.target_name );
+                             name, vp.name(), ret.target_name );
                 } else {
                     //~ 1$s - vehicle name, 2$s - part name, 3$s - NPC or monster
                     add_msg( m_warning, _( "Your %1$s's %2$s rams into %3$s!" ),
-                             name, parts[ ret.part ].name(), ret.target_name );
+                             name, vp.name(), ret.target_name );
                 }
             }
 
-            if( part_flag( ret.part, "SHARP" ) ) {
+            if( vp_is_sharp ) {
                 critter->bleed();
             } else {
                 sounds::sound( p, 20, sounds::sound_t::combat, snd, false, "smash_success", "hit_vehicle" );
@@ -1159,11 +1159,11 @@ veh_collision vehicle::part_collision( int part, const tripoint &p,
             if( !snd.empty() ) {
                 //~ 1$s - vehicle name, 2$s - part name, 3$s - collision object name, 4$s - sound message
                 add_msg( m_warning, _( "Your %1$s's %2$s rams into %3$s with a %4$s" ),
-                         name, parts[ ret.part ].name(), ret.target_name, snd );
+                         name, vp.name(), ret.target_name, snd );
             } else {
                 //~ 1$s - vehicle name, 2$s - part name, 3$s - collision object name
                 add_msg( m_warning, _( "Your %1$s's %2$s rams into %3$s." ),
-                         name, parts[ ret.part ].name(), ret.target_name );
+                         name, vp.name(), ret.target_name );
             }
         }
 
@@ -2073,7 +2073,7 @@ float map::vehicle_wheel_traction( const vehicle &veh, bool ignore_movement_modi
             continue; // No traction from wheel in deep water or air
         }
 
-        int move_mod = move_cost_ter_furn( pp );
+        int move_mod = move_cost_ter_furn( pos );
         if( move_mod == 0 ) {
             return 0.0f; // Vehicle locked in wall, shouldn't happen, but does
         }
@@ -2146,16 +2146,17 @@ units::angle map::shake_vehicle( vehicle &veh, const int velocity_before,
             }
             move_resist = std::max( 100, pet_resist );
         }
-        if( veh.part_with_feature( ps, VPFLAG_SEATBELT, true ) == -1 ) {
+        const int idx_seatbelt = veh.part_with_feature( ps, VPFLAG_SEATBELT, true );
+        if( idx_seatbelt == -1 ) {
             ///\EFFECT_STR reduces chance of being thrown from your seat when not wearing a seatbelt
             throw_from_seat = d_vel * rng( 80, 120 ) > move_resist;
         } else {
             // Reduce potential damage based on quality of seatbelt
-            dmg -= veh.part_info( veh.part_with_feature( ps, VPFLAG_SEATBELT, true ) ).bonus;
+            dmg -= veh.part( idx_seatbelt ).info().bonus;
         }
 
         // Damage passengers if d_vel is too high
-        if( !throw_from_seat && ( 10 * d_vel ) > 6 * rng( 25, 50 ) ) {
+        if( !throw_from_seat && d_vel > rng( 15, 30 ) ) {
             if( psg ) {
                 psg->deal_damage( nullptr, bodypart_id( "torso" ), damage_instance( damage_bash, dmg ) );
                 psg->add_msg_player_or_npc( m_bad,

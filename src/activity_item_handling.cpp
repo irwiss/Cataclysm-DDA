@@ -205,7 +205,8 @@ static void put_into_vehicle( Character &c, item_drop_reason reason, const std::
         return;
     }
 
-    const tripoint where = veh.global_part_pos3( part );
+    const vehicle_part &vp = veh.part( part );
+    const tripoint where = veh.global_part_pos3( vp );
     map &here = get_map();
     const std::string ter_name = here.name( where );
     int fallen_count = 0;
@@ -237,7 +238,7 @@ static void put_into_vehicle( Character &c, item_drop_reason reason, const std::
         it.handle_pickup_ownership( c );
     }
 
-    const std::string part_name = veh.part_info( part ).name();
+    const std::string part_name = vp.info().name();
 
     if( same_type( items ) ) {
         const item &it = items.front();
@@ -536,10 +537,11 @@ static bool vehicle_activity( Character &you, const tripoint_bub_ms &src_loc, in
                               char type )
 {
     map &here = get_map();
-    vehicle *veh = veh_pointer_or_null( here.veh_at( src_loc ) );
-    if( !veh ) {
+    const optional_vpart_position ovp = here.veh_at( src_loc );
+    if( !ovp ) {
         return false;
     }
+    vehicle *veh = veh_pointer_or_null( ovp );
     int time_to_take = 0;
     if( vpindex >= veh->part_count() ) {
         // if parts got removed during our work, we can't just carry on removing, we want to repair parts!
@@ -2694,7 +2696,8 @@ static requirement_check_result generic_multi_activity_check_requirement(
                 you.activity_vehicle_part_index = 1;
                 return requirement_check_result::SKIP_LOCATION;
             }
-            const vpart_info &vpinfo = veh->part_info( you.activity_vehicle_part_index );
+            const vehicle_part &vp = veh->part( you.activity_vehicle_part_index );
+            const vpart_info &vpinfo = vp.info();
             requirement_data reqs;
             if( reason == do_activity_reason::NEEDS_VEH_DECONST ) {
                 reqs = vpinfo.removal_requirements();
