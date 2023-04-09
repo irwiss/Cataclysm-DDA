@@ -217,7 +217,7 @@ TEST_CASE( "vehicle_collision_applies_damage_to_fake_parent", "[vehicle] [vehicl
             tripoint obstacle_point = fake_front_right_headlight + tripoint_south_east;
             here.furn_set( obstacle_point.xy(), furn_id( "f_boulder_large" ) );
 
-            int part_count = veh->parts_at_relative( point( 2, 2 ), true, false ).size();
+            const int part_count = veh->parts_at_mount( point( 2, 2 ) ).size();
             THEN( "The collision damage is applied to the fake's parent" ) {
                 here.vehmove();
                 std::vector<int> damaged_parts;
@@ -225,17 +225,15 @@ TEST_CASE( "vehicle_collision_applies_damage_to_fake_parent", "[vehicle] [vehicl
                 // hitting the boulder should have slowed the vehicle down
                 REQUIRE( veh->velocity < target_velocity );
 
-                std::vector<int> parent_parts = veh->parts_at_relative( point( 2, 2 ), true, false );
-                for( int rel : parent_parts ) {
-                    vehicle_part &vp = veh->part( rel );
+                const vehicle::vec_of_parts parent_parts = veh->parts_at_mount( point( 2, 2 ) );
+                for( const vehicle_part &vp : parent_parts ) {
                     if( vp.info().durability > vp.hp() ) {
-                        damaged_parts.push_back( rel );
+                        damaged_parts.push_back( veh->index_of_part( &vp ) );
                     }
                 }
-                for( int rel : veh->parts_at_relative( point( 2, 3 ), true, false ) ) {
-                    vehicle_part &vp = veh->part( rel );
+                for( const vehicle_part &vp : veh->parts_at_mount( point( 2, 3 ) ) ) {
                     if( vp.info().durability > vp.hp() ) {
-                        damaged_fake_parts.push_back( rel );
+                        damaged_fake_parts.push_back( veh->index_of_part( &vp ) );
                     }
                 }
                 // If a part was smashed, we pass,

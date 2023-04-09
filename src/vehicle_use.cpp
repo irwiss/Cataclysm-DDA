@@ -1230,13 +1230,13 @@ bool vehicle::can_close( int part_index, Character &who )
 
 void vehicle::open_all_at( int p )
 {
-    for( const int elem : parts_at_relative( parts[p].mount, true, true ) ) {
-        const vehicle_part &vp = parts[elem];
+    for( const vehicle_part &vp : parts_at_mount( parts[p].mount,
+            /* use_cache = */ true, /* include_fake = */ true ) ) {
         if( vp.info().has_flag( VPFLAG_OPENABLE ) ) {
             // Note that this will open multi-square and non-multipart parts in the tile. This
             // means that adjacent open multi-square openables can still have closed stuff
             // on same tile after this function returns
-            open( elem );
+            open( index_of_part( &vp ) );
         }
     }
 }

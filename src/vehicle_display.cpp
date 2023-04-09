@@ -146,12 +146,12 @@ int vehicle::print_part_list( const catacurses::window &win, int y1, const int m
     if( p < 0 || p >= static_cast<int>( parts.size() ) ) {
         return y1;
     }
-    const std::vector<int> pl = this->parts_at_relative( parts[p].mount, true, include_fakes );
     const vpart_position vppos( const_cast<vehicle &>( *this ), p );
+    const vec_of_const_parts pl = this->parts_at_mount( parts[p].mount,
+                                  /* use_cache = */ true, include_fakes );
     int y = y1;
     for( size_t i = 0; i < pl.size(); i++ ) {
-        const int part_index = pl[i];
-        const vehicle_part &vp = part( part_index );
+        const vehicle_part &vp = pl[i];
         const vpart_info &vpi = vp.info();
         if( !vp.is_real_or_active_fake() ) {
             continue;
@@ -182,10 +182,11 @@ int vehicle::print_part_list( const catacurses::window &win, int y1, const int m
         }
 
         if( vpi.has_flag( VPFLAG_CARGO ) ) {
+            const vehicle_stack cargo = get_items( vp );
             //~ used/total volume of a cargo vehicle part
             partname += string_format( _( " (vol: %s/%s %s)" ),
-                                       format_volume( stored_volume( vp ) ),
-                                       format_volume( max_volume( vp ) ),
+                                       format_volume( cargo.stored_volume() ),
+                                       format_volume( cargo.max_volume() ),
                                        volume_units_abbr() );
         }
 
@@ -207,16 +208,14 @@ int vehicle::print_part_list( const catacurses::window &win, int y1, const int m
                         static_cast<int>( i ) == hl ? hilite( c_light_gray ) : c_light_gray, partname );
         wprintz( win, sym_color, right_sym );
 
-        if( i == 0 ) {
-            if( vppos.is_inside() ) {
-                //~ indicates that a vehicle part is inside
-                mvwprintz( win, point( width - 2 - utf8_width( _( "Interior" ) ), y ), c_light_gray,
-                           _( "Interior" ) );
-            } else {
-                //~ indicates that a vehicle part is outside
-                mvwprintz( win, point( width - 2 - utf8_width( _( "Exterior" ) ), y ), c_light_gray,
-                           _( "Exterior" ) );
-            }
+        if( i == 0 && vppos.is_inside() ) {
+            //~ indicates that a vehicle part is inside
+            mvwprintz( win, point( width - 2 - utf8_width( _( "Interior" ) ), y ), c_light_gray,
+                       _( "Interior" ) );
+        } else if( i == 0 ) {
+            //~ indicates that a vehicle part is outside
+            mvwprintz( win, point( width - 2 - utf8_width( _( "Exterior" ) ), y ), c_light_gray,
+                       _( "Exterior" ) );
         }
         y++;
     }
@@ -246,7 +245,7 @@ void vehicle::print_vparts_descs( const catacurses::window &win, int max_y, int 
         return;
     }
 
-    std::vector<int> pl = this->parts_at_relative( parts[p].mount, true );
+    const vec_of_const_parts pl = this->parts_at_mount( parts[p].mount );
     std::string msg;
 
     int lines = 0;
@@ -272,7 +271,7 @@ void vehicle::print_vparts_descs( const catacurses::window &win, int max_y, int 
         lines += 1;
     }
     for( size_t i = start_at; i < pl.size(); i++ ) {
-        const vehicle_part &vp = parts[ pl [ i ] ];
+        const vehicle_part &vp = pl[i];
         std::string possible_msg;
         const nc_color name_color = vp.is_broken() ? c_dark_gray : c_light_green;
         possible_msg += colorize( vp.name(), name_color ) + "\n";

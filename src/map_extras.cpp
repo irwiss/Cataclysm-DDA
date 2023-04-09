@@ -329,8 +329,8 @@ static bool mx_house_wasp( map &m, const tripoint &/*loc*/ )
 
 static void delete_cargo_at_mount_point( vehicle &veh, const point &pt )
 {
-    for( const int part_idx : veh.parts_at_relative( pt, true ) ) {
-        vehicle_stack here = veh.get_items( veh.part( part_idx ) );
+    for( vehicle_part &vp : veh.parts_at_mount( pt ) ) {
+        vehicle_stack here = veh.get_items( vp );
         for( auto iter = here.begin(); iter != here.end(); ) {
             iter = here.erase( iter );
         }
