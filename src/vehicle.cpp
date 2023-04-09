@@ -1226,21 +1226,10 @@ ret_val<void> vehicle::can_mount( const point &dp, const vpart_info &vpi ) const
     return ret_val<void>::make_success();
 }
 
-bool vehicle::can_unmount( const int p ) const
+ret_val<void> vehicle::can_unmount( const vehicle_part &vp ) const
 {
-    std::string no_reason;
-    return can_unmount( p, no_reason );
-}
-
-bool vehicle::can_unmount( const int p, std::string &reason ) const
-{
-    if( p < 0 || p > static_cast<int>( parts.size() ) ) {
-        return false;
-    }
-
-    const vehicle_part &vp_to_remove = parts[p];
-    const vpart_info &vpi_to_remove = vp_to_remove.info();
-    const std::vector<int> parts_here = parts_at_relative( vp_to_remove.mount, false );
+    const vpart_info &vpi_to_remove = vp.info();
+    const std::vector<int> parts_here = parts_at_relative( vp.mount, false );
 
     // make sure there are no parts which require flags from this part
     for( const int p_other : parts_here ) {
@@ -1248,45 +1237,42 @@ bool vehicle::can_unmount( const int p, std::string &reason ) const
         for( const std::string &flag : vpi_other.get_flags() ) {
             const std::string &requires_flag = json_flag::get( flag ).requires_flag();
             if( vpi_to_remove.has_flag( requires_flag ) ) {
-                reason = string_format( _( "Remove the attached %s first." ), vpi_other.name() );
-                return false;
+                return ret_val<void>::make_failure( _( "Remove the attached %s first." ), vpi_other.name() );
             }
         }
     }
 
-    if( vp_to_remove.has_flag( vp_flag::animal_flag ) ) {
-        reason = _( "Remove carried animal first." );
-        return false;
+    if( vp.has_flag( vp_flag::animal_flag ) ) {
+        return ret_val<void>::make_failure( _( "Remove carried animal first." ) );
     }
 
-    if( vp_to_remove.has_flag( vp_flag::carrying_flag ) ||
-        vp_to_remove.has_flag( vp_flag::carried_flag ) ) {
-        reason = _( "Unracking is required before removing this part." );
-        return false;
+    if( vp.has_flag( vp_flag::carrying_flag ) ||
+        vp.has_flag( vp_flag::carried_flag ) ) {
+        return ret_val<void>::make_failure( _( "Unracking is required before removing this part." ) );
     }
 
     if( vpi_to_remove.location != part_location_structure ) {
-        return true; // non-structure parts don't have extra requirements
+        return ret_val<void>::make_success(); // non-structure parts don't have extra requirements
     }
 
     // structure parts can only be removed when no non-structure parts are on tile
     for( const int p_other : parts_here ) {
         const vpart_info &vpi_other = part( p_other ).info();
         if( vpi_other.location != part_location_structure ) {
-            reason = _( "Remove all other attached parts first." );
-            return false;
+            return ret_val<void>::make_failure( _( "Remove all other attached parts first." ) );
         }
     }
 
     // reaching here means only structure parts left on this tile
     if( parts_here.size() > 1 ) {
-        return true; // wrecks can have more than one structure part, so it's valid for removal
+        // wrecks can have more than one structure part, so it's valid for removal
+        return ret_val<void>::make_success();
     }
 
     // find all the vehicle's tiles adjacent to the one we're removing
     std::vector<vehicle_part> adjacent_parts;
     for( const point &offset : four_adjacent_offsets ) {
-        const std::vector<int> parts_over_there = parts_at_relative( vp_to_remove.mount + offset, false );
+        const std::vector<int> parts_over_there = parts_at_relative( vp.mount + offset, false );
         if( !parts_over_there.empty() ) {
             //Just need one part from the square to track the x/y
             adjacent_parts.push_back( parts[parts_over_there[0]] );
@@ -1294,15 +1280,13 @@ bool vehicle::can_unmount( const int p, std::string &reason ) const
     }
 
     if( adjacent_parts.empty() ) {
-        return true; // this is the only vehicle tile left, valid to remove
+        return ret_val<void>::make_success(); // this is the only vehicle tile left, valid to remove
     }
 
-    if( adjacent_parts.size() == 1 ) {
-        // removing this will create invalid vehicle with only a PROTRUSION part (wing mirror, forklift etc)
-        if( adjacent_parts[0].info().has_flag( "PROTRUSION" ) ) {
-            reason = _( "Remove other parts before removing last structure part." );
-            return false;
-        }
+    // removing this will create invalid vehicle with only a PROTRUSION part (wing mirror, forklift etc)
+    if( adjacent_parts.size() == 1 && adjacent_parts[0].info().has_flag( "PROTRUSION" ) ) {
+        return ret_val<void>::make_failure(
+                   _( "Remove other parts before removing last structure part." ) );
     }
 
     if( adjacent_parts.size() > 1 ) {
@@ -1312,15 +1296,14 @@ bool vehicle::can_unmount( const int p, std::string &reason ) const
         // on every pair combination of adjacent parts to verify each pair is connected.
         for( size_t i = 0; i < adjacent_parts.size(); i++ ) {
             for( size_t j = i + 1; j < adjacent_parts.size(); j++ ) {
-                if( !is_connected( adjacent_parts[i], adjacent_parts[j], vp_to_remove ) ) {
-                    reason = _( "Removing this part would split the vehicle." );
-                    return false;
+                if( !is_connected( adjacent_parts[i], adjacent_parts[j], vp ) ) {
+                    return ret_val<void>::make_failure( _( "Removing this part would split the vehicle." ) );
                 }
             }
         }
     }
 
-    return true; // Anything not explicitly denied is permitted
+    return ret_val<void>::make_success(); // Anything not explicitly denied is permitted
 }
 
 /**

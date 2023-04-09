@@ -1041,7 +1041,7 @@ static activity_reason_info can_do_activity_there( const activity_id &act, Chara
                 const vpart_info &vpinfo = part_elem->info();
                 int vpindex = veh->index_of_part( part_elem, true );
                 // if part is not on this vehicle, or if its attached to another part that needs to be removed first.
-                if( vpindex == -1 || !veh->can_unmount( vpindex ) ) {
+                if( vpindex == -1 || !veh->can_unmount( *part_elem ).success() ) {
                     continue;
                 }
                 // If removing this part would make the vehicle non-flyable, avoid it
