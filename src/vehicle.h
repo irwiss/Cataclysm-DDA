@@ -1322,8 +1322,8 @@ class vehicle
         bool is_passenger( Character &c ) const;
         // get passenger of the position of part \p vp
         Character *get_passenger( const vehicle_part &vp ) const;
-        // get monster on a boardable part at p
-        monster *get_monster( int p ) const;
+        // get monster of the position of part \p vp
+        monster *get_monster( const vehicle_part &vp ) const;
 
         bool enclosed_at( const tripoint &pos ); // not const because it calls refresh_insides
         // Returns the location of the vehicle in global map square coordinates.

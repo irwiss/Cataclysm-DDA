@@ -593,10 +593,9 @@ void vehicle::thrust( int thd, int z )
     }
     // If you are going faster than the animal can handle, harness is damaged
     // Animal may come free ( and possibly hit by vehicle )
-    for( size_t e = 0; e < parts.size(); e++ ) {
-        vehicle_part &vp = parts[ e ];
+    for( vehicle_part &vp : parts ) {
         if( vp.info().fuel_type == fuel_type_animal && engines.size() != 1 ) {
-            monster *mon = get_monster( e );
+            monster *mon = get_monster( vp );
             if( mon != nullptr && mon->has_effect( effect_harnessed ) ) {
                 if( velocity > mon->get_speed() * 12 ) {
                     add_msg( m_bad, _( "Your %s is not fast enough to keep up with the %s" ), mon->get_name(), name );
@@ -865,7 +864,8 @@ veh_collision vehicle::part_collision( int part, const tripoint &p,
 
     if( is_body_collision ) {
         // critters on a BOARDABLE part in this vehicle aren't colliding
-        if( ovp && ( &ovp->vehicle() == this ) && get_monster( ovp->part_index() ) ) {
+        std::optional<vpart_reference> vp_boardable = ovp.part_with_feature( VPFLAG_BOARDABLE, true );
+        if( vp_boardable && ( &ovp->vehicle() == this ) && get_monster( vp_boardable->part() ) ) {
             return ret;
         }
         // we just ran into a fish, so move it out of the way
@@ -1272,10 +1272,9 @@ void vehicle::handle_trap( const tripoint &p, int part )
 
 monster *vehicle::get_harnessed_animal() const
 {
-    for( size_t e = 0; e < parts.size(); e++ ) {
-        const vehicle_part &vp = parts[ e ];
+    for( const vehicle_part &vp : parts ) {
         if( vp.info().fuel_type == fuel_type_animal ) {
-            monster *mon = get_monster( e );
+            monster *mon = get_monster( vp );
             if( mon && mon->has_effect( effect_harnessed ) && mon->has_effect( effect_pet ) ) {
                 return mon;
             }

@@ -566,10 +566,9 @@ void vehicle::activate_magical_follow()
 
 void vehicle::activate_animal_follow()
 {
-    for( size_t e = 0; e < parts.size(); e++ ) {
-        vehicle_part &vp = parts[ e ];
+    for( vehicle_part &vp : parts ) {
         if( vp.info().fuel_type == fuel_type_animal ) {
-            monster *mon = get_monster( e );
+            const monster *mon = get_monster( vp );
             if( mon && mon->has_effect( effect_harnessed ) ) {
                 vp.enabled = true;
                 is_following = true;
@@ -734,14 +733,13 @@ void vehicle::drive_to_local_target( const tripoint &target, bool follow_protoco
             }
         }
         bool its_a_pet = false;
-        if( creatures.creature_at( tripoint( elem, sm_pos.z ) ) ) {
-            npc *guy = creatures.creature_at<npc>( tripoint( elem, sm_pos.z ) );
-            if( guy && !guy->in_vehicle ) {
+        if( const Creature *critter = creatures.creature_at( tripoint( elem, sm_pos.z ) ) ) {
+            if( critter->is_npc() && critter->as_npc()->in_vehicle ) {
                 stop = true;
                 break;
             }
-            for( const vehicle_part &p : parts ) {
-                monster *mon = get_monster( index_of_part( &p ) );
+            for( const vehicle_part &vp : parts ) {
+                const monster *mon = get_monster( vp );
                 if( mon && mon->pos().xy() == elem ) {
                     its_a_pet = true;
                     break;
@@ -3132,13 +3130,14 @@ Character *vehicle::get_passenger( const vehicle_part &vp ) const
     return nullptr;
 }
 
-monster *vehicle::get_monster( int p ) const
+monster *vehicle::get_monster( const vehicle_part &vp ) const
 {
-    p = part_with_feature( p, VPFLAG_BOARDABLE, false );
-    if( p >= 0 ) {
-        return get_creature_tracker().creature_at<monster>( global_part_pos3( p ), true );
+    const int p = part_with_feature( vp.mount, "BOARDABLE", false );
+    if( p < 0 ) {
+        return nullptr;
     }
-    return nullptr;
+    const vehicle_part &vp_boardable = part( p );
+    return get_creature_tracker().creature_at<monster>( global_part_pos3( vp_boardable ), true );
 }
 
 tripoint_abs_ms vehicle::global_square_location() const
@@ -7069,7 +7068,7 @@ int vehicle::damage_direct( map &here, vehicle_part &vp, int dmg, const damage_t
     } else if( vp.is_broken() && vpi.has_flag( "UNMOUNT_ON_DAMAGE" ) ) {
         here.spawn_item( vp_pos, vpi.base_item, 1, 0, calendar::turn,
                          vpi.base_item->damage_max() - 1 );
-        monster *mon = get_monster( index_of_part( &vp ) );
+        monster *mon = get_monster( vp );
         if( mon != nullptr && mon->has_effect( effect_harnessed ) ) {
             mon->remove_effect( effect_harnessed );
         }
@@ -7604,7 +7603,7 @@ void vehicle::calc_mass_center( bool use_precalc ) const
 
         if( vpi.has_flag( VPFLAG_BOARDABLE ) ) {
             const Character *p = get_passenger( vp );
-            const monster *z = get_monster( i );
+            const monster *z = get_monster( vp );
             // Sometimes flag is wrongly set, don't crash!
             m_part += p != nullptr ? p->get_weight() : 0_gram;
             m_part += z != nullptr ? z->get_weight() : 0_gram;
