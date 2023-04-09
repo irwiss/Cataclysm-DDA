@@ -5248,7 +5248,7 @@ void vehicle::do_engine_damage( vehicle_part &vp, int strain )
     if( is_engine_on( vp ) && !is_perpetual_type( vp ) && engine_fuel_left( vp ) &&
         rng( 1, 100 ) < strain ) {
         const int dmg = rng( 0, strain * 4 );
-        damage_direct( get_map(), index_of_part( &vp ), dmg );
+        damage_direct( get_map(), vp, dmg );
         if( one_in( 2 ) ) {
             add_msg( _( "Your engine emits a high pitched whine." ) );
         } else {
@@ -6745,9 +6745,10 @@ int vehicle::damage( map &here, int p, int dmg, const damage_type_id &type, bool
     }
 
     int target_part = vp_initial.info().rotor_diameter() ? p : random_entry( parts_here );
-
+    vehicle_part &vp_target = part( target_part );
+    const vpart_info &vpi_target = vp_target.info();
     // door motor mechanism is protected by closed doors
-    if( part( target_part ).info().has_flag( "DOOR_MOTOR" ) ) {
+    if( vpi_target.has_flag( "DOOR_MOTOR" ) ) {
         int strongest_door_durability = INT_MIN;
         for( const int p_here : parts_here ) { // find the most strong openable that is not open
             const vehicle_part &vp_here = part( p_here );
@@ -6763,11 +6764,9 @@ int vehicle::damage( map &here, int p, int dmg, const damage_type_id &type, bool
 
     const int armor_part = part_with_feature( vp_initial.mount, "ARMOR", true );
     if( armor_part < 0 ) { // Not covered by armor -- damage part
-        return damage_direct( here, target_part, dmg, type );
+        return damage_direct( here, vp_target, dmg, type );
     }
-    const vehicle_part &vp_target = part( target_part );
-    const vpart_info &vpi_target = vp_target.info();
-    const vehicle_part &vp_armor = part( armor_part );
+    vehicle_part &vp_armor = part( armor_part );
     // Covered by armor -- hit both armor and part, but reduce damage by armor's reduction
     const int protection = type->no_resist ? 0 : vp_armor.info().damage_reduction.at( type );
     // Parts on roof aren't protected
@@ -6777,11 +6776,11 @@ int vehicle::damage( map &here, int p, int dmg, const damage_type_id &type, bool
     // Damaging the part with the higher index first is safe, as removing a part
     // only changes indices after the removed part.
     if( armor_part < target_part ) {
-        damage_direct( here, target_part, overhead ? dmg : dmg - protection, type );
-        return damage_direct( here, armor_part, dmg, type );
+        damage_direct( here, vp_target, overhead ? dmg : dmg - protection, type );
+        return damage_direct( here, vp_armor, dmg, type );
     } else {
-        const int damage_dealt = damage_direct( here, armor_part, dmg, type );
-        damage_direct( here, target_part, overhead ? dmg : dmg - protection, type );
+        const int damage_dealt = damage_direct( here, vp_armor, dmg, type );
+        damage_direct( here, vp_target, overhead ? dmg : dmg - protection, type );
         return damage_dealt;
     }
 }
@@ -6797,7 +6796,7 @@ void vehicle::damage_all( int dmg1, int dmg2, const damage_type_id &type, const 
     }
 
     for( const vpart_reference &vpr : get_all_parts() ) {
-        const vehicle_part &vp = vpr.part();
+        vehicle_part &vp = vpr.part();
         const vpart_info &vpi = vp.info();
         const int distance = 1 + square_dist( vp.mount, impact );
         if( distance > 1 ) {
@@ -6809,7 +6808,7 @@ void vehicle::damage_all( int dmg1, int dmg2, const damage_type_id &type, const 
                     net_dmg = std::max( 0, net_dmg - vp_shock_absorber.info().bonus );
                 }
             }
-            damage_direct( get_map(), vpr.part_index(), net_dmg, type );
+            damage_direct( get_map(), vp, net_dmg, type );
         }
     }
 }
@@ -7036,36 +7035,35 @@ bool vehicle::explode_fuel( int p, const damage_type_id &type )
     return true;
 }
 
-int vehicle::damage_direct( map &here, int p, int dmg, const damage_type_id &type )
+int vehicle::damage_direct( map &here, vehicle_part &vp, int dmg, const damage_type_id &type )
 {
-    // Make sure p is within range and hasn't been removed already
-    if( ( static_cast<size_t>( p ) >= parts.size() ) || parts[p].removed ) {
+    const vpart_info &vpi = vp.info();
+    const tripoint vp_pos = global_part_pos3( vp );
+    if( vp.removed ) {
         return dmg;
     }
-    // If auto-driving and damage happens, bail out
     if( is_autodriving ) {
-        stop_autodriving();
+        stop_autodriving(); // if auto-driving and damage happens, bail out
     }
-    here.set_memory_seen_cache_dirty( global_part_pos3( p ) );
-    if( parts[p].is_broken() ) {
-        return break_off( here, p, dmg );
+    here.set_memory_seen_cache_dirty( vp_pos );
+    if( vp.is_broken() ) {
+        return break_off( here, index_of_part( &vp ), dmg );
     }
 
-    int tsh = std::min( 20, part_info( p ).durability / 10 );
-    if( dmg < tsh && type != damage_pure ) {
-        if( type == damage_heat && parts[p].is_fuel_store() ) {
-            explode_fuel( p, type );
+    const int threshold = std::min( 200, vpi.durability ) / 10;
+    if( dmg < threshold && type != damage_pure ) {
+        if( type == damage_heat && vp.is_fuel_store() ) {
+            explode_fuel( index_of_part( &vp ), type );
         }
-
         return dmg;
     }
 
     if( !type->no_resist ) {
-        dmg -= std::min<int>( dmg, part_info( p ).damage_reduction.at( type ) );
+        dmg -= std::min<int>( dmg, vpi.damage_reduction.at( type ) );
     }
-    int dres = dmg - parts[p].hp();
-    if( mod_hp( parts[ p ], -dmg ) ) {
-        if( is_flyable() && !rotors.empty() && !parts[p].info().has_flag( VPFLAG_SIMPLE_PART ) ) {
+    const int damage_received = std::max( dmg - vp.hp(), 0 );
+    if( mod_hp( vp, -dmg ) ) {
+        if( is_flyable() && !rotors.empty() && !vpi.has_flag( VPFLAG_SIMPLE_PART ) ) {
             // If we break a part, we can no longer fly the vehicle.
             set_flyable( false );
         }
@@ -7074,12 +7072,12 @@ int vehicle::damage_direct( map &here, int p, int dmg, const damage_type_id &typ
         pivot_dirty = true;
 
         // destroyed parts lose any contained fuels, battery charges or ammo
-        leak_fuel( parts [ p ] );
+        leak_fuel( vp );
 
-        for( const item &e : parts[p].items ) {
-            here.add_item_or_charges( global_part_pos3( p ), e );
+        for( const item &it : vp.items ) {
+            here.add_item_or_charges( vp_pos, it );
         }
-        parts[p].items.clear();
+        vp.items.clear();
 
         invalidate_mass();
         coeff_air_changed = true;
@@ -7088,14 +7086,16 @@ int vehicle::damage_direct( map &here, int p, int dmg, const damage_type_id &typ
         refresh();
     }
 
-    if( parts[p].is_fuel_store() ) {
-        explode_fuel( p, type );
-    } else if( parts[ p ].is_broken() && part_flag( p, "UNMOUNT_ON_DAMAGE" ) ) {
-        monster *mon = get_monster( p );
+    if( vp.is_fuel_store() ) {
+        explode_fuel( index_of_part( &vp ), type );
+    } else if( vp.is_broken() && vpi.has_flag( "UNMOUNT_ON_DAMAGE" ) ) {
+        here.spawn_item( vp_pos, vpi.base_item, 1, 0, calendar::turn,
+                         vpi.base_item->damage_max() - 1 );
+        monster *mon = get_monster( index_of_part( &vp ) );
         if( mon != nullptr && mon->has_effect( effect_harnessed ) ) {
             mon->remove_effect( effect_harnessed );
         }
-        if( part_flag( p, "TOW_CABLE" ) ) {
+        if( vpi.has_flag( "TOW_CABLE" ) ) {
             invalidate_towing( true );
         } else {
             item part_as_item = parts[p].properties_to_item();
@@ -7112,14 +7112,14 @@ int vehicle::damage_direct( map &here, int p, int dmg, const damage_type_id &typ
             }
             if( !g || &get_map() != &here ) {
                 MapgenRemovePartHandler handler( here );
-                remove_part( p, handler );
+                remove_part( index_of_part( &vp ), handler );
             } else {
-                remove_part( p );
+                remove_part( index_of_part( &vp ) );
             }
         }
     }
 
-    return std::max( dres, 0 );
+    return damage_received;
 }
 
 void vehicle::leak_fuel( vehicle_part &pt ) const

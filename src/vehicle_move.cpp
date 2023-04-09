@@ -594,14 +594,13 @@ void vehicle::thrust( int thd, int z )
     // If you are going faster than the animal can handle, harness is damaged
     // Animal may come free ( and possibly hit by vehicle )
     for( size_t e = 0; e < parts.size(); e++ ) {
-        const vehicle_part &vp = parts[ e ];
+        vehicle_part &vp = parts[ e ];
         if( vp.info().fuel_type == fuel_type_animal && engines.size() != 1 ) {
             monster *mon = get_monster( e );
             if( mon != nullptr && mon->has_effect( effect_harnessed ) ) {
                 if( velocity > mon->get_speed() * 12 ) {
                     add_msg( m_bad, _( "Your %s is not fast enough to keep up with the %s" ), mon->get_name(), name );
-                    int dmg = rng( 0, 10 );
-                    damage_direct( get_map(), e, dmg );
+                    damage_direct( get_map(), vp, rng( 0, 10 ) );
                 }
             }
         }
@@ -1199,10 +1198,11 @@ veh_collision vehicle::part_collision( int part, const tripoint &p,
 
 void vehicle::handle_trap( const tripoint &p, int part )
 {
-    int pwh = part_with_feature( part, VPFLAG_WHEEL, true );
+    const int pwh = part_with_feature( part, VPFLAG_WHEEL, true );
     if( pwh < 0 ) {
         return;
     }
+    vehicle_part &vp = this->part( pwh );
     map &here = get_map();
     const trap &tr = here.tr_at( p );
 
@@ -1238,7 +1238,7 @@ void vehicle::handle_trap( const tripoint &p, int part )
             explosion_handler::explosion( source, p, veh_data.damage, 0.5f, false, veh_data.shrapnel );
         } else {
             // Hit the wheel directly since it ran right over the trap.
-            damage_direct( here, pwh, veh_data.damage );
+            damage_direct( here, vp, veh_data.damage );
         }
         bool still_has_trap = true;
         if( veh_data.remove_trap || veh_data.do_explosion ) {
