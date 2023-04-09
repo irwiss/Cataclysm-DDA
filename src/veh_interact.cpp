@@ -1289,8 +1289,8 @@ void veh_interact::do_mend()
         }
     };
 
-    auto act = [&]( const vehicle_part & pt ) {
-        player_character.mend_item( veh->part_base( veh->index_of_part( &pt ) ) );
+    auto act = [&]( vehicle_part & pt ) {
+        player_character.mend_item( veh->get_part_base_loc( pt ) );
         sel_cmd = 'q';
     };
 

@@ -78,12 +78,12 @@ std::string turret_data::name() const
 
 item_location turret_data::base()
 {
-    return item_location( vehicle_cursor( *veh, veh->index_of_part( part ) ), &part->base );
+    return veh->get_part_base_loc( *part );
 }
 
 item_location turret_data::base() const
 {
-    return item_location( vehicle_cursor( *veh, veh->index_of_part( part ) ), &part->base );
+    return veh->get_part_base_loc( *part );
 }
 
 bool turret_data::uses_vehicle_tanks_or_batteries() const

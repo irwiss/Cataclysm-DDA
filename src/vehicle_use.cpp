@@ -2052,7 +2052,7 @@ void vehicle::build_interact_menu( veh_menu &menu, const tripoint &p, bool with_
                 vehicle_part &vp_tank = parts[vp_tank_idx];
                 // this is not "proper" use of vehicle_cursor, but should be good enough for reducing
                 // charges and deleting the liquid on last charge drained, for more details see #61164
-                item_location base_loc( vehicle_cursor( *this, vp_tank_idx ), &vp_tank.base );
+                item_location base_loc = get_part_base_loc( vp_tank );
                 item_location water_loc( base_loc, &vp_tank.base.only_item() );
                 const consume_activity_actor consume_act( water_loc );
                 get_player_character().assign_activity( consume_act );

@@ -1090,7 +1090,7 @@ class vehicle
                              std::vector<vehicle *> *added_vehicles = nullptr );
 
         /** Get handle for base item of part */
-        item_location part_base( int p );
+        item_location get_part_base_loc( vehicle_part &vp );
 
         /**
          * Remove a part from a targeted remote vehicle. Useful for, e.g. power cables that have

@@ -2325,9 +2325,10 @@ bool vehicle::split_vehicles( map &here,
     return did_split;
 }
 
-item_location vehicle::part_base( int p )
+item_location vehicle::get_part_base_loc( vehicle_part &vp )
 {
-    return item_location( vehicle_cursor( *this, p ), &parts[ p ].base );
+    const int part_index = index_of_part( &vp, true );
+    return item_location( vehicle_cursor( *this, part_index ), &vp.base );
 }
 
 item_group::ItemList vehicle_part::pieces_for_broken_part() const
