@@ -311,10 +311,12 @@ bool veh_app_interact::can_siphon()
 
 bool veh_app_interact::can_unplug()
 {
-    vehicle_part_range vpr = veh->get_all_parts();
-    return std::any_of( vpr.begin(), vpr.end(), []( const vpart_reference & ref ) {
-        return ref.vehicle().part_flag( static_cast<int>( ref.part_index() ), "POWER_TRANSFER" );
-    } );
+    for( const vpart_reference &vpr : veh->get_all_parts() ) {
+        if( vpr.info().has_flag( "POWER_TRANSFER" ) ) {
+            return true;
+        }
+    }
+    return false;
 }
 
 // Helper function for selecting a part in the parts list.

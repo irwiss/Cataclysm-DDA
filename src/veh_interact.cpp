@@ -844,10 +844,10 @@ bool veh_interact::update_part_requirements()
     int dif_steering = 0;
     if( sel_vpart_info->has_flag( "STEERABLE" ) ) {
         std::set<int> axles;
-        for( int &p : veh->steering ) {
-            if( !veh->part_flag( p, "TRACKED" ) ) {
-                // tracked parts don't contribute to axle complexity
-                axles.insert( veh->part( p ).mount.x );
+        for( const int p : veh->steering ) {
+            vehicle_part &vp = veh->part( p );
+            if( !vp.info().has_flag( "TRACKED" ) ) {
+                axles.emplace( vp.mount.x ); // tracked parts don't contribute to axle complexity
             }
         }
 
@@ -3304,7 +3304,7 @@ void veh_interact::complete_vehicle( Character &you )
             contents.clear();
 
             // Power cables must remove parts from the target vehicle, too.
-            if( veh->part_flag( vehicle_part, "POWER_TRANSFER" ) ) {
+            if( vp.info().has_flag( "POWER_TRANSFER" ) ) {
                 veh->remove_remote_part( vehicle_part );
             }
 

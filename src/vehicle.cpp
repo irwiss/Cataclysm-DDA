@@ -174,9 +174,10 @@ void vehicle_stack::insert( const item &newitem )
 
 units::volume vehicle_stack::max_volume() const
 {
-    if( myorigin->part_flag( part_num, "CARGO" ) && !myorigin->part( part_num ).is_broken() ) {
+    const vehicle_part &vp = myorigin->part( part_num );
+    if( vp.info().has_flag( "CARGO" ) && !vp.is_broken() ) {
         // Set max volume for vehicle cargo to prevent integer overflow
-        return std::min( myorigin->part( part_num ).info().size, 10000_liter );
+        return std::min( vp.info().size, 10000_liter );
     }
     return 0_ml;
 }
@@ -995,8 +996,9 @@ bool vehicle::has_security_working() const
 {
     bool found_security = false;
     if( fuel_left( fuel_type_battery ) > 0 ) {
-        for( int s : speciality ) {
-            if( part_flag( s, "SECURITY" ) && parts[ s ].is_available() ) {
+        for( const int p : speciality ) {
+            const vehicle_part &vp = part( p );
+            if( vp.info().has_flag( "SECURITY" ) && vp.is_available() ) {
                 found_security = true;
                 break;
             }
@@ -2694,17 +2696,13 @@ void vpart_position::set_label( const std::string &text ) const
 
 int vehicle::next_part_to_close( int p, bool outside ) const
 {
-    std::vector<int> parts_here = parts_at_relative( parts[p].mount, true, true );
-
+    const std::vector<int> parts_here = parts_at_relative( parts[p].mount, true, true );
     // We want reverse, since we close the outermost thing first (curtains), and then the innermost thing (door)
-    for( std::vector<int>::reverse_iterator part_it = parts_here.rbegin();
-         part_it != parts_here.rend();
-         ++part_it ) {
-
-        if( part_flag( *part_it, VPFLAG_OPENABLE )
-            && parts[ *part_it ].is_available()
-            && parts[*part_it].open == 1
-            && ( !outside || !part_flag( *part_it, "OPENCLOSE_INSIDE" ) ) ) {
+    for( auto part_it = parts_here.rbegin(); part_it != parts_here.rend(); ++part_it ) {
+        const vehicle_part &vp = part( *part_it );
+        const vpart_info &vpi = vp.info();
+        if( vpi.has_flag( VPFLAG_OPENABLE ) && vp.is_available() && vp.open
+            && ( !outside || !vpi.has_flag( "OPENCLOSE_INSIDE" ) ) ) {
             return *part_it;
         }
     }
@@ -2713,12 +2711,12 @@ int vehicle::next_part_to_close( int p, bool outside ) const
 
 int vehicle::next_part_to_open( int p, bool outside ) const
 {
-    std::vector<int> parts_here = parts_at_relative( parts[p].mount, true, true );
-
     // We want forwards, since we open the innermost thing first (curtains), and then the innermost thing (door)
-    for( const int &elem : parts_here ) {
-        if( part_flag( elem, VPFLAG_OPENABLE ) && parts[ elem ].is_available() && parts[elem].open == 0 &&
-            ( !outside || !part_flag( elem, "OPENCLOSE_INSIDE" ) ) ) {
+    for( const int elem : parts_at_relative( parts[p].mount, true, true ) ) {
+        const vehicle_part &vp = part( elem );
+        const vpart_info &vpi = vp.info();
+        if( vpi.has_flag( VPFLAG_OPENABLE ) && vp.is_available() && !vp.open &&
+            ( !outside || !vpi.has_flag( "OPENCLOSE_INSIDE" ) ) ) {
             return elem;
         }
     }
@@ -2930,24 +2928,6 @@ std::vector<std::vector<int>> vehicle::find_lines_of_parts(
         ret_parts.push_back( x_parts );
     }
     return ret_parts;
-}
-
-bool vehicle::part_flag( int part, const std::string &flag ) const
-{
-    if( part < 0 || part >= static_cast<int>( parts.size() ) || parts[part].removed ) {
-        return false;
-    } else {
-        return this->part( part ).info().has_flag( flag );
-    }
-}
-
-bool vehicle::part_flag( int part, const vpart_bitflags flag ) const
-{
-    if( part < 0 || part >= static_cast<int>( parts.size() ) || parts[part].removed ) {
-        return false;
-    } else {
-        return this->part( part ).info().has_flag( flag );
-    }
 }
 
 int vehicle::part_at( const point &dp ) const
@@ -6576,9 +6556,9 @@ void vehicle::remove_remote_part( int part_num )
 
         for( size_t j = 0; j < veh->loose_parts.size(); j++ ) {
             int remote_partnum = veh->loose_parts[j];
-            const vehicle_part *remote_part = &veh->parts[remote_partnum];
+            const vehicle_part &vp_remote = veh->parts[remote_partnum];
 
-            if( veh->part_flag( remote_partnum, "POWER_TRANSFER" ) && remote_part->target.first == local_abs ) {
+            if( vp_remote.info().has_flag( "POWER_TRANSFER" ) && vp_remote.target.first == local_abs ) {
                 veh->remove_part( remote_partnum );
                 return;
             }
@@ -6592,31 +6572,34 @@ void vehicle::shed_loose_parts( const tripoint_bub_ms *src, const tripoint_bub_m
     // remove_part rebuilds the loose_parts vector, so iterate over a copy to preserve
     // power transfer lines that still have some slack to them
     std::vector<int> lp = loose_parts;
-    for( const int &elem : lp ) {
+    for( const int elem : lp ) {
         if( std::find( loose_parts.begin(), loose_parts.end(), elem ) == loose_parts.end() ) {
             // part was removed elsewhere
             continue;
         }
-        if( part_flag( elem, "POWER_TRANSFER" ) ) {
-            int distance = rl_dist( here.getabs( bub_part_pos( parts[elem] ) ), parts[elem].target.second );
-            int max_dist = parts[elem].get_base().type->maximum_charges();
+        const vehicle_part &vp = part( elem );
+        const vpart_info &vpi = vp.info();
+        const tripoint vp_pos = global_part_pos3( vp );
+        if( vpi.has_flag( "POWER_TRANSFER" ) ) {
+            const int distance = rl_dist( here.getabs( bub_part_pos( vp ) ), vp.target.second );
+            const int max_dist = vp.get_base().type->maximum_charges();
             if( src && ( max_dist - distance ) > 0 ) {
                 // power line still has some slack to it, so keep it attached for now
-                vehicle *veh = find_vehicle( parts[elem].target.second );
+                vehicle *veh = find_vehicle( vp.target.second );
                 if( veh != nullptr ) {
-                    for( int remote_lp : veh->loose_parts ) {
-                        if( veh->part_flag( remote_lp, "POWER_TRANSFER" ) &&
-                            veh->parts[remote_lp].target.first == here.getabs( *src ) ) {
+                    for( const int remote_lp : veh->loose_parts ) {
+                        vehicle_part &vp_remote = veh->part( remote_lp );
+                        if( vp_remote.info().has_flag( "POWER_TRANSFER" ) &&
+                            vp_remote.target.first == here.getabs( *src ) ) {
                             // update remote part's target to new position
-                            veh->parts[remote_lp].target.first = here.getabs( dst ? *dst : bub_part_pos( elem ) );
-                            veh->parts[remote_lp].target.second = veh->parts[remote_lp].target.first;
+                            vp_remote.target.first = here.getabs( dst ? *dst : bub_part_pos( elem ) );
+                            vp_remote.target.second = vp_remote.target.first;
                         }
                     }
                 }
                 continue;
             }
-            add_msg_if_player_sees( global_part_pos3( parts[elem] ), m_warning,
-                                    _( "The %s's power connection was detached!" ), name );
+            add_msg_if_player_sees( vp_pos, m_warning, _( "The %s's power connection was detached!" ), name );
             remove_remote_part( elem );
         }
         if( part_flag( elem, "TOW_CABLE" ) ) {
