@@ -1320,8 +1320,8 @@ class vehicle
 
         // is given character a passenger of this vehicle
         bool is_passenger( Character &c ) const;
-        // get passenger at part p
-        Character *get_passenger( int you ) const;
+        // get passenger of the position of part \p vp
+        Character *get_passenger( const vehicle_part &vp ) const;
         // get monster on a boardable part at p
         monster *get_monster( int p ) const;
 

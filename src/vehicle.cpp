@@ -2257,7 +2257,7 @@ bool vehicle::split_vehicles( map &here,
             Character *passenger = nullptr;
             // Unboard any entities standing on any transferred part
             if( vp_mov.info().has_flag( VPFLAG_BOARDABLE ) ) {
-                passenger = get_passenger( index_of_part( &vp_mov ) );
+                passenger = get_passenger( vp_mov );
                 if( passenger ) {
                     passengers.push_back( passenger );
                 }
@@ -3112,18 +3112,22 @@ bool vehicle::is_passenger( Character &c ) const
     }
     std::vector<int> psg_parts = boarded_parts();
     for( const int &psg_part : psg_parts ) {
-        if( get_passenger( psg_part ) == &c ) {
+        if( get_passenger( part( psg_part ) ) == &c ) {
             return true;
         }
     }
     return false;
 }
 
-Character *vehicle::get_passenger( int you ) const
+Character *vehicle::get_passenger( const vehicle_part &vp ) const
 {
-    you = part_with_feature( you, VPFLAG_BOARDABLE, false );
-    if( you >= 0 && parts[you].has_flag( vp_flag::passenger_flag ) ) {
-        return g->critter_by_id<Character>( parts[you].passenger_id );
+    const int p = part_with_feature( vp.mount, "BOARDABLE", false );
+    if( p < 0 ) {
+        return nullptr;
+    }
+    const vehicle_part &vp_boardable = part( p );
+    if( vp_boardable.has_flag( vp_flag::passenger_flag ) ) {
+        return g->critter_by_id<Character>( vp_boardable.passenger_id );
     }
     return nullptr;
 }
@@ -7348,7 +7352,7 @@ vehicle_stack vpart_reference::items() const
 
 Character *vpart_reference::get_passenger() const
 {
-    return vehicle().get_passenger( part_index() );
+    return vehicle().get_passenger( part() );
 }
 
 bool vpart_position::operator<( const vpart_position &other ) const
@@ -7599,7 +7603,7 @@ void vehicle::calc_mass_center( bool use_precalc ) const
         m_part += m_part_items;
 
         if( vpi.has_flag( VPFLAG_BOARDABLE ) ) {
-            const Character *p = get_passenger( i );
+            const Character *p = get_passenger( vp );
             const monster *z = get_monster( i );
             // Sometimes flag is wrongly set, don't crash!
             m_part += p != nullptr ? p->get_weight() : 0_gram;

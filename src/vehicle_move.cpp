@@ -1848,7 +1848,7 @@ vehicle *vehicle::act_on_map()
         for( int boarded : boarded_parts() ) {
             if( part_with_feature( boarded, VPFLAG_CONTROLS, true ) >= 0 ) {
                 controlled = true;
-                Character *passenger = get_passenger( boarded );
+                Character *passenger = get_passenger( part( boarded ) );
                 if( passenger != nullptr ) {
                     passenger->practice( skill_driving, 1 );
                 }

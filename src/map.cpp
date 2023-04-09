@@ -1259,7 +1259,7 @@ void map::board_vehicle( const tripoint &pos, Character *p )
         return;
     }
     if( vp->part().has_flag( vp_flag::passenger_flag ) ) {
-        Character *psg = vp->vehicle().get_passenger( vp->part_index() );
+        Character *psg = vp->vehicle().get_passenger( vp->part() );
         debugmsg( "map::board_vehicle: passenger (%s) is already there",
                   psg ? psg->get_name() : "<null>" );
         unboard_vehicle( pos );
