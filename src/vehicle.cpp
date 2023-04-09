@@ -7009,30 +7009,26 @@ int vehicle::break_off( map &here, vehicle_part &vp, int dmg )
     return dmg;
 }
 
-bool vehicle::explode_fuel( int p, const damage_type_id &type )
+bool vehicle::explode_fuel( vehicle_part &vp, const damage_type_id &type )
 {
-    const itype_id &ft = part_info( p ).fuel_type;
-    item fuel = item( ft );
+    const item fuel = item( vp.info().fuel_type );
     if( !fuel.has_explosion_data() ) {
         return false;
     }
     const fuel_explosion_data &data = fuel.get_explosion_data();
 
-    if( parts[ p ].is_broken() ) {
-        leak_fuel( parts[ p ] );
+    if( vp.is_broken() ) {
+        leak_fuel( vp );
     }
 
-    int explosion_chance = type == damage_heat ? data.explosion_chance_hot :
-                           data.explosion_chance_cold;
-    if( one_in( explosion_chance ) ) {
+    if( one_in( type == damage_heat ? data.explosion_chance_hot : data.explosion_chance_cold ) ) {
         get_event_bus().send<event_type::fuel_tank_explodes>( name );
-        const int pow = 120 * ( 1 - std::exp( data.explosion_factor / -5000 *
-                                              ( parts[p].ammo_remaining() * data.fuel_size_factor ) ) );
-        //debugmsg( "damage check dmg=%d pow=%d amount=%d", dmg, pow, parts[p].amount );
+        const int pow = 120 * ( 1 - std::exp( data.explosion_factor / -5000.0f *
+                                              vp.ammo_remaining() * data.fuel_size_factor ) );
 
-        explosion_handler::explosion( nullptr, global_part_pos3( p ), pow, 0.7, data.fiery_explosion );
-        mod_hp( parts[p], -parts[ p ].hp() );
-        parts[p].ammo_unset();
+        explosion_handler::explosion( nullptr, global_part_pos3( vp ), pow, 0.7, data.fiery_explosion );
+        mod_hp( vp, -vp.hp() );
+        vp.ammo_unset();
     }
 
     return true;
@@ -7056,7 +7052,7 @@ int vehicle::damage_direct( map &here, vehicle_part &vp, int dmg, const damage_t
     const int threshold = std::min( 200, vpi.durability ) / 10;
     if( dmg < threshold && type != damage_pure ) {
         if( type == damage_heat && vp.is_fuel_store() ) {
-            explode_fuel( index_of_part( &vp ), type );
+            explode_fuel( vp, type );
         }
         return dmg;
     }
@@ -7090,7 +7086,7 @@ int vehicle::damage_direct( map &here, vehicle_part &vp, int dmg, const damage_t
     }
 
     if( vp.is_fuel_store() ) {
-        explode_fuel( index_of_part( &vp ), type );
+        explode_fuel( vp, type );
     } else if( vp.is_broken() && vpi.has_flag( "UNMOUNT_ON_DAMAGE" ) ) {
         here.spawn_item( vp_pos, vpi.base_item, 1, 0, calendar::turn,
                          vpi.base_item->damage_max() - 1 );
