@@ -2342,6 +2342,65 @@ item_group::ItemList vehicle_part::pieces_for_broken_part() const
     return item_group::items_from( group, calendar::turn );
 }
 
+// templated to support const and non-const variants
+template <class veh_t, class part_t>
+static std::vector<std::reference_wrapper<part_t>> parts_at_mount(
+            veh_t &veh, const point &mount, bool use_cache, bool include_fake )
+{
+    std::vector<std::reference_wrapper<part_t>> res;
+    if( !use_cache ) {
+        if( include_fake ) {
+            for( const vpart_reference &vpr : veh.get_all_parts_with_fakes() ) {
+                part_t &vp = vpr.part();
+                if( vp.mount == mount && !vp.removed ) {
+                    res.emplace_back( vp );
+                }
+            }
+        } else {
+            for( const vpart_reference &vpr : veh.get_all_parts() ) {
+                part_t &vp = vpr.part();
+                if( vp.mount == mount && !vp.removed ) {
+                    res.emplace_back( vp );
+                }
+            }
+        }
+    } else {
+        const auto &iter = veh.relative_parts.find( mount );
+        if( iter == veh.relative_parts.end() ) {
+            return res;
+        }
+        if( include_fake ) {
+            for( const int part_index : iter->second ) {
+                part_t &vp = veh.part( part_index );
+                res.emplace_back( vp );
+            }
+        } else {
+            for( const int part_index : iter->second ) {
+                part_t &vp = veh.part( part_index );
+                if( !vp.is_fake ) {
+                    res.emplace_back( vp );
+                }
+            }
+        }
+    }
+    return res;
+}
+
+
+vehicle::vec_of_const_parts vehicle::parts_at_mount(
+    const point &mount, const bool use_cache, bool include_fake ) const
+{
+    return ::parts_at_mount<const vehicle, const vehicle_part>(
+               *this, mount, use_cache, include_fake );
+}
+
+vehicle::vec_of_parts vehicle::parts_at_mount(
+    const point &mount, const bool use_cache, bool include_fake )
+{
+    return ::parts_at_mount<vehicle, vehicle_part>(
+               *this, mount, use_cache, include_fake );
+}
+
 std::vector<int> vehicle::parts_at_relative( const point &dp, const bool use_cache,
         bool include_fake ) const
 {

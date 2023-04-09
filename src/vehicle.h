@@ -1143,6 +1143,22 @@ class vehicle
         vehicle_part_with_feature_range<vpart_bitflags> get_enabled_parts( vpart_bitflags f ) const;
         /**@}*/
 
+        using vec_of_parts = std::vector<std::reference_wrapper<vehicle_part>>;
+        using vec_of_const_parts = std::vector<std::reference_wrapper<const vehicle_part>>;
+
+        /**
+        *  Returns vector of wrapped part references at mount point \p mount
+        *  @param use_cache if true then use relative_parts cache
+        *  @param include_fake if true also include fakes
+        *  @returns vector of wrapped part references or empty vector
+        */
+        vec_of_parts parts_at_mount(
+            const point &mount, bool use_cache = true, bool include_fake = false );
+
+        // const overload of @see vehicle::parts_at_mount
+        vec_of_const_parts parts_at_mount(
+            const point &mount, bool use_cache = true, bool include_fake = false ) const;
+
         // returns the list of indices of parts at certain position (not accounting frame direction)
         std::vector<int> parts_at_relative( const point &dp, bool use_cache,
                                             bool include_fake = false ) const;
