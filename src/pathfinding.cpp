@@ -294,11 +294,18 @@ std::vector<tripoint> map::route( const tripoint &f, const tripoint &t,
                 }
 
                 int part = -1;
+                int dummy = -1;
                 const const_maptile &tile = maptile_at_internal( p );
                 const ter_t &terrain = tile.get_ter_t();
                 const furn_t &furniture = tile.get_furn_t();
                 const field &field = tile.get_field();
                 const vehicle *veh = veh_at_internal( p, part );
+                const optional_vpart_position ovp = part >= 0
+                                                    ? optional_vpart_position( vpart_position( const_cast<vehicle &>( *veh ), part ) )
+                                                    : optional_vpart_position( std::nullopt );
+                const std::optional<vpart_reference> ovp_obstacle = ovp.obstacle_at_part();
+                // whether both points are in same vehicle (for checking if opening door from inside)
+                const bool in_same_vehicle = veh_at_internal( cur, dummy ) == veh;
 
                 const int cost = move_cost_internal( furniture, terrain, field, veh, part );
                 // Don't calculate bash rating unless we intend to actually use it
@@ -323,36 +330,24 @@ std::vector<tripoint> map::route( const tripoint &f, const tripoint &t,
                         // Only try to open INSIDE doors from the inside
                         // To open and then move onto the tile
                         newg += 4;
-                    } else if( veh != nullptr ) {
-                        const auto vpobst = vpart_position( const_cast<vehicle &>( *veh ), part ).obstacle_at_part();
-                        part = vpobst ? vpobst->part_index() : -1;
-                        int dummy = -1;
-                        if( doors && veh->part_flag( part, VPFLAG_OPENABLE ) &&
-                            ( !veh->part_flag( part, "OPENCLOSE_INSIDE" ) ||
-                              veh_at_internal( cur, dummy ) == veh ) ) {
-                            // Handle car doors, but don't try to path through curtains
-                            newg += 10; // One turn to open, 4 to move there
-                        } else if( part >= 0 && bash > 0 ) {
-                            // Car obstacle that isn't a door
-                            // TODO: Account for armor
-                            int hp = veh->part( part ).hp();
-                            if( hp / 20 > bash ) {
-                                // Threshold damage thing means we just can't bash this down
-                                layer.state[index] = ASL_CLOSED;
-                                continue;
-                            } else if( hp / 10 > bash ) {
-                                // Threshold damage thing means we will fail to deal damage pretty often
-                                hp *= 2;
-                            }
-
-                            newg += 2 * hp / bash + 8 + 4;
-                        } else if( part >= 0 ) {
-                            if( !doors || !veh->part_flag( part, VPFLAG_OPENABLE ) ) {
-                                // Won't be openable, don't try from other sides
-                                layer.state[index] = ASL_CLOSED;
-                            }
-
-                            continue;
+                    } else if( ovp_obstacle ) {
+                        const vehicle_part &vp = ovp_obstacle->part();
+                        const vpart_info &vpi = vp.info();
+                        const bool is_openable = vpi.has_flag( VPFLAG_OPENABLE );
+                        const bool is_openable_inside = vpi.has_flag( "OPENCLOSE_INSIDE" );
+                        // TODO: bashing should account for armor
+                        const int bash_times = bash > 0 ? vp.hp() / bash : 10000; // how many bashes required
+                        if( doors && is_openable && ( !is_openable_inside || in_same_vehicle ) ) {
+                            newg += 4 + 6; // openable car door
+                        } else if( bash_times < 10 ) {
+                            newg += 4 + 8 + 2 * bash_times; // bashable obstacle
+                        } else if( bash_times < 20 ) {
+                            newg += 4 + 8 + 4 * bash_times; // bashable obstacle ( hard )
+                        } else if( !doors || !is_openable ) {
+                            layer.state[index] = ASL_CLOSED;
+                            continue; // effectively unopenable from any direction
+                        } else {
+                            continue; // allow retry from another direction
                         }
                     } else if( rating > 1 ) {
                         // Expected number of turns to bash it down, 1 turn to move there
