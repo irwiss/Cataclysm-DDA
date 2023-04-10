@@ -521,13 +521,9 @@ int activity_handlers::move_cost( const item &it, const tripoint_bub_ms &src,
     if( player_character.get_grab_type() == object_type::VEHICLE ) {
         tripoint cart_position = player_character.pos() + player_character.grab_point;
 
-        if( const std::optional<vpart_reference> vp = get_map().veh_at(
-                    cart_position ).part_with_feature( "CARGO", false ) ) {
-            const vehicle &veh = vp->vehicle();
-            size_t vstor = vp->part_index();
-            units::volume capacity = veh.free_volume( vstor );
-
-            return move_cost_cart( it, src, dest, capacity );
+        if( const std::optional<vpart_reference> vp = get_map().veh_at( cart_position )
+                .part_with_feature( VPFLAG_CARGO, false ) ) {
+            return move_cost_cart( it, src, dest, vp->vehicle().free_volume( vp->part() ) );
         }
     }
 
@@ -2248,18 +2244,6 @@ void activity_on_turn_move_loot( player_activity &act, Character &you )
 
             for( const tripoint_abs_ms &dest : dest_set ) {
                 const tripoint_bub_ms dest_loc = here.bub_from_abs( dest );
-                vehicle *dest_veh;
-                int dest_part;
-
-                //Check destination for cargo part
-                if( const std::optional<vpart_reference> vp =
-                        here.veh_at( dest_loc ).part_with_feature( "CARGO", false ) ) {
-                    dest_veh = &vp->vehicle();
-                    dest_part = vp->part_index();
-                } else {
-                    dest_veh = nullptr;
-                    dest_part = -1;
-                }
 
                 // skip tiles with inaccessible furniture, like filled charcoal kiln
                 if( !here.can_put_items_ter_furn( dest_loc ) ||
@@ -2269,8 +2253,9 @@ void activity_on_turn_move_loot( player_activity &act, Character &you )
 
                 units::volume free_space;
                 // if there's a vehicle with space do not check the tile beneath
-                if( dest_veh ) {
-                    free_space = dest_veh->free_volume( dest_part );
+                if( const std::optional<vpart_reference> ovp =
+                        here.veh_at( dest_loc ).part_with_feature( VPFLAG_CARGO, false ) ) {
+                    free_space = ovp->vehicle().free_volume( ovp->part() );
                 } else {
                     free_space = here.free_volume( dest_loc );
                 }

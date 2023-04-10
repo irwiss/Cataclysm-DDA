@@ -2481,10 +2481,9 @@ void veh_interact::display_stats() const
 
     units::volume total_cargo = 0_ml;
     units::volume free_cargo = 0_ml;
-    for( const vpart_reference &vp : veh->get_any_parts( "CARGO" ) ) {
-        const size_t p = vp.part_index();
-        total_cargo += veh->max_volume( p );
-        free_cargo += veh->free_volume( p );
+    for( const vpart_reference &vpr : veh->get_any_parts( VPFLAG_CARGO ) ) {
+        total_cargo += veh->max_volume( vpr.part() );
+        free_cargo += veh->free_volume( vpr.part() );
     }
 
     const int second_column = 33 + ( extraw / 4 );

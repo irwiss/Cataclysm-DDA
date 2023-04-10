@@ -1714,9 +1714,9 @@ class vehicle
         void pldrive( Character &driver, const point &p, int z = 0 );
 
         // stub for per-vpart limit
-        units::volume max_volume( int part ) const;
-        units::volume free_volume( int part ) const;
-        units::volume stored_volume( int part ) const;
+        units::volume max_volume( const vehicle_part &vp ) const;
+        units::volume free_volume( const vehicle_part &vp ) const;
+        units::volume stored_volume( const vehicle_part &vp ) const;
 
         /**
         * Flags item \p tool with PSEUDO, if it has MOD pocket then a `pseudo_magazine_mod` is

@@ -66,7 +66,7 @@ bool _to_map( item const &it, map &here, tripoint const &dpoint_here )
 bool _to_veh( item const &it, std::optional<vpart_reference> const &vp )
 {
     int const part = static_cast<int>( vp->part_index() );
-    if( vp->vehicle().free_volume( part ) >= it.volume() ) {
+    if( vp->vehicle().free_volume( vp->part() ) >= it.volume() ) {
         std::optional<vehicle_stack::iterator> const ret = vp->vehicle().add_item( part, it );
         return !ret.has_value();
     }

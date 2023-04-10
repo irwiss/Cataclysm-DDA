@@ -5426,19 +5426,19 @@ void vehicle::disable_smart_controller_if_needed()
 }
 
 // total volume of all the things
-units::volume vehicle::stored_volume( const int part ) const
+units::volume vehicle::stored_volume( const vehicle_part &vp ) const
 {
-    return get_items( this->part( part ) ).stored_volume();
+    return get_items( vp ).stored_volume();
 }
 
-units::volume vehicle::max_volume( const int part ) const
+units::volume vehicle::max_volume( const vehicle_part &vp ) const
 {
-    return get_items( this->part( part ) ).max_volume();
+    return get_items( vp ).max_volume();
 }
 
-units::volume vehicle::free_volume( const int part ) const
+units::volume vehicle::free_volume( const vehicle_part &vp ) const
 {
-    return get_items( this->part( part ) ).free_volume();
+    return get_items( vp ).free_volume();
 }
 
 void vehicle::make_active( item_location &loc )

@@ -146,10 +146,13 @@ int vehicle::print_part_list( const catacurses::window &win, int y1, const int m
     if( p < 0 || p >= static_cast<int>( parts.size() ) ) {
         return y1;
     }
-    std::vector<int> pl = this->parts_at_relative( parts[p].mount, true, include_fakes );
+    const std::vector<int> pl = this->parts_at_relative( parts[p].mount, true, include_fakes );
+    const vpart_position vppos( const_cast<vehicle &>( *this ), p );
     int y = y1;
     for( size_t i = 0; i < pl.size(); i++ ) {
-        const vehicle_part &vp = parts[ pl [ i ] ];
+        const int part_index = pl[i];
+        const vehicle_part &vp = part( part_index );
+        const vpart_info &vpi = vp.info();
         if( !vp.is_real_or_active_fake() ) {
             continue;
         }
@@ -178,21 +181,20 @@ int vehicle::print_part_list( const catacurses::window &win, int y1, const int m
             }
         }
 
-        if( part_flag( pl[i], "CARGO" ) ) {
+        if( vpi.has_flag( VPFLAG_CARGO ) ) {
             //~ used/total volume of a cargo vehicle part
             partname += string_format( _( " (vol: %s/%s %s)" ),
-                                       format_volume( stored_volume( pl[i] ) ),
-                                       format_volume( max_volume( pl[i] ) ),
+                                       format_volume( stored_volume( vp ) ),
+                                       format_volume( max_volume( vp ) ),
                                        volume_units_abbr() );
         }
 
-        bool armor = part_flag( pl[i], "ARMOR" );
         std::string left_sym;
         std::string right_sym;
-        if( armor ) {
+        if( vpi.has_flag( VPFLAG_ARMOR ) ) {
             left_sym = "(";
             right_sym = ")";
-        } else if( part_info( pl[i] ).location == part_location_structure ) {
+        } else if( vpi.location == part_location_structure ) {
             left_sym = "[";
             right_sym = "]";
         } else {
@@ -205,21 +207,22 @@ int vehicle::print_part_list( const catacurses::window &win, int y1, const int m
                         static_cast<int>( i ) == hl ? hilite( c_light_gray ) : c_light_gray, partname );
         wprintz( win, sym_color, right_sym );
 
-        if( i == 0 && vpart_position( const_cast<vehicle &>( *this ), pl[i] ).is_inside() ) {
-            //~ indicates that a vehicle part is inside
-            mvwprintz( win, point( width - 2 - utf8_width( _( "Interior" ) ), y ), c_light_gray,
-                       _( "Interior" ) );
-        } else if( i == 0 ) {
-            //~ indicates that a vehicle part is outside
-            mvwprintz( win, point( width - 2 - utf8_width( _( "Exterior" ) ), y ), c_light_gray,
-                       _( "Exterior" ) );
+        if( i == 0 ) {
+            if( vppos.is_inside() ) {
+                //~ indicates that a vehicle part is inside
+                mvwprintz( win, point( width - 2 - utf8_width( _( "Interior" ) ), y ), c_light_gray,
+                           _( "Interior" ) );
+            } else {
+                //~ indicates that a vehicle part is outside
+                mvwprintz( win, point( width - 2 - utf8_width( _( "Exterior" ) ), y ), c_light_gray,
+                           _( "Exterior" ) );
+            }
         }
         y++;
     }
 
     // print the label for this location
-    const std::optional<std::string> label = vpart_position( const_cast<vehicle &>( *this ),
-            p ).get_label();
+    const std::optional<std::string> label = vppos.get_label();
     if( label && y <= max_y ) {
         mvwprintz( win, point( 1, y++ ), c_light_red, _( "Label: %s" ), label->c_str() );
     }
