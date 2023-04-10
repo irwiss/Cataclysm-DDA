@@ -1276,9 +1276,8 @@ void vehicle::open_or_close( const int part_index, const bool opening )
     coeff_air_dirty = true;
 }
 
-void vehicle::use_autoclave( int p )
+void vehicle::use_autoclave( vehicle_part &vp )
 {
-    vehicle_part &vp = part( p );
     vehicle_stack items = get_items( vp );
     bool filthy_items = std::any_of( items.begin(), items.end(), []( const item & i ) {
         return i.has_flag( json_flag_FILTHY );
@@ -1324,9 +1323,8 @@ void vehicle::use_autoclave( int p )
     }
 }
 
-void vehicle::use_washing_machine( int p )
+void vehicle::use_washing_machine( vehicle_part &vp )
 {
-    vehicle_part &vp = part( p );
     avatar &player_character = get_avatar();
     // Get all the items that can be used as detergent
     const inventory &inv = player_character.crafting_inventory();
@@ -1411,9 +1409,8 @@ void vehicle::use_washing_machine( int p )
     }
 }
 
-void vehicle::use_dishwasher( int p )
+void vehicle::use_dishwasher( vehicle_part &vp )
 {
-    vehicle_part &vp = part( p );
     avatar &player_character = get_avatar();
     bool detergent_is_enough = player_character.crafting_inventory().has_charges( itype_detergent, 5 );
     vehicle_stack items = get_items( vp );
@@ -1967,33 +1964,33 @@ void vehicle::build_interact_menu( veh_menu &menu, const tripoint &p, bool with_
 
     const std::optional<vpart_reference> vp_autoclave = vp.avail_part_with_feature( "AUTOCLAVE" );
     if( vp_autoclave ) {
-        const size_t cl_idx = vp_autoclave->part_index();
-        menu.add( vp_autoclave->part().enabled
+        vehicle_part &vp = vp_autoclave->part();
+        menu.add( vp.enabled
                   ? _( "Deactivate the autoclave" )
                   : _( "Activate the autoclave (1.5 hours)" ) )
         .hotkey( "TOGGLE_AUTOCLAVE" )
-        .on_submit( [this, cl_idx] { use_autoclave( cl_idx ); } );
+        .on_submit( [this, &vp] { use_autoclave( vp ); } );
     }
 
     const std::optional<vpart_reference> vp_washing_machine =
         vp.avail_part_with_feature( "WASHING_MACHINE" );
     if( vp_washing_machine ) {
-        const size_t wm_idx = vp_washing_machine->part_index();
-        menu.add( vp_washing_machine->part().enabled
+        vehicle_part &vp = vp_washing_machine->part();
+        menu.add( vp.enabled
                   ? _( "Deactivate the washing machine" )
                   : _( "Activate the washing machine (1.5 hours)" ) )
         .hotkey( "TOGGLE_WASHING_MACHINE" )
-        .on_submit( [this, wm_idx] { use_washing_machine( wm_idx ); } );
+        .on_submit( [this, &vp] { use_washing_machine( vp ); } );
     }
 
     const std::optional<vpart_reference> vp_dishwasher = vp.avail_part_with_feature( "DISHWASHER" );
     if( vp_dishwasher ) {
-        const size_t dw_idx = vp_dishwasher->part_index();
-        menu.add( vp_dishwasher->part().enabled
+        vehicle_part &vp = vp_dishwasher->part();
+        menu.add( vp.enabled
                   ? _( "Deactivate the dishwasher" )
                   : _( "Activate the dishwasher (1.5 hours)" ) )
         .hotkey( "TOGGLE_DISHWASHER" )
-        .on_submit( [this, dw_idx] { use_dishwasher( dw_idx ); } );
+        .on_submit( [this, &vp] { use_dishwasher( vp ); } );
     }
 
     const std::optional<vpart_reference> vp_cargo = vp.part_with_feature( VPFLAG_CARGO, false );

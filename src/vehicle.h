@@ -1996,9 +1996,9 @@ class vehicle
          * the map is just shifted (in the later case simply set smx/smy directly).
          */
         void set_submap_moved( const tripoint &p );
-        void use_autoclave( int p );
-        void use_washing_machine( int p );
-        void use_dishwasher( int p );
+        void use_autoclave( vehicle_part &vp );
+        void use_washing_machine( vehicle_part &vp );
+        void use_dishwasher( vehicle_part &vp );
         void use_monster_capture( int part, const tripoint &pos );
         void use_harness( int part, const tripoint &pos );
 
