@@ -1040,7 +1040,7 @@ std::pair<std::string, nc_color> display::vehicle_cruise_text_color( const Chara
         const std::string units = get_option<std::string> ( "USE_METRIC_SPEEDS" );
         vel_text = string_format( "%d < %d %s", target, current, units );
 
-        const float strain = veh->strain();
+        const float strain = veh->get_engine_strain();
         if( strain <= 0 ) {
             vel_color = c_light_blue;
         } else if( strain <= 0.2 ) {

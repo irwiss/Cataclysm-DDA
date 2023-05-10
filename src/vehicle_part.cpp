@@ -222,7 +222,7 @@ bool vehicle_part::is_available( const bool carried ) const
     return !is_unavailable( carried );
 }
 
-itype_id vehicle_part::fuel_current() const
+const itype_id &vehicle_part::fuel_current() const
 {
     if( !ammo_pref.is_null() ) {
         return ammo_pref;

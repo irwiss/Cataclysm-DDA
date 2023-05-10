@@ -565,7 +565,8 @@ void vehicle::thrust( int thd, int z )
             requested_z_change = z;
         }
         //break the engines a bit, if going too fast.
-        const int strn = static_cast<int>( strain() * strain() * 100 );
+        const float strain = get_engine_strain();
+        const int strn = static_cast<int>( strain * strain * 100 );
         for( const int p : engines ) {
             do_engine_damage( parts[p], strn );
         }

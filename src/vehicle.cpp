@@ -3283,7 +3283,8 @@ int64_t vehicle::fuel_left( const itype_id &ftype,
         Character &player_character = get_player_character();
         // TODO: Allow NPCs to power those
         const optional_vpart_position vp = get_map().veh_at( player_character.pos() );
-        bool player_controlling = player_in_control( player_character );
+        bool player_controlling = player_in_control( player_character ) &&
+                                  !player_character.has_effect( effect_winded );
 
         //if the engine in the player tile is a muscle engine, and player is controlling vehicle
         if( vp && &vp->vehicle() == this && player_controlling ) {
@@ -4297,9 +4298,9 @@ units::power vehicle::static_drag( bool actual ) const
     return extra_drag + ( actual && !engine_on && !is_actively_towed ? -1500_W : 0_W );
 }
 
-float vehicle::strain() const
+float vehicle::get_engine_strain() const
 {
-    if( velocity == 0.0 ) {
+    if( velocity == 0 ) {
         return 0.0f;
     }
     int mv = max_velocity();
@@ -4519,19 +4520,6 @@ units::power vehicle::engine_fuel_usage( const vehicle_part &vp ) const
     return usage;
 }
 
-std::map<itype_id, units::power> vehicle::fuel_usage() const
-{
-    std::map<itype_id, units::power> ret;
-    for( const int p : engines ) {
-        const vehicle_part &vp = parts[p];
-        if( is_perpetual_type( vp ) ) {
-            continue;
-        }
-        ret[vp.fuel_current()] += engine_fuel_usage( vp );
-    }
-    return ret;
-}
-
 units::energy vehicle::drain_energy( const itype_id &ftype, units::energy wanted_energy )
 {
     units::energy drained = 0_J;
@@ -4551,77 +4539,75 @@ units::energy vehicle::drain_energy( const itype_id &ftype, units::energy wanted
 
 void vehicle::consume_fuel( int load, bool idling )
 {
-    double st = strain();
-    for( const auto &fuel_pr : fuel_usage() ) {
-        const itype_id &ft = fuel_pr.first;
-        if( idling && ft == fuel_type_battery ) {
+    if( load <= 0 ) {
+        return;
+    }
+    const double strain = get_engine_strain();
+    const double fuel_modifier = load * ( 1.0 + strain * strain * 100.0 ) / 1000.0;
+    for( const int p : engines ) {
+        vehicle_part &vp = parts[p];
+        if( !vp.enabled ) {
             continue;
         }
 
-        units::energy to_consume = fuel_pr.second * 1_seconds;
-        to_consume *= load * ( 1 + st * st * 100 ) / 1000;
-        auto inserted = fuel_used_last_turn.insert( { ft, 0_J } );
-        inserted.first->second += to_consume;
-        units::energy remainder = fuel_remainder[ ft ];
-        to_consume -= remainder;
-
-        if( to_consume > 0_J ) {
-            fuel_remainder[ ft ] = drain_energy( ft, to_consume ) - to_consume;
-        } else {
-            fuel_remainder[ ft ] = -to_consume;
-        }
-    }
-    // Only process muscle power things when moving.
-    if( idling ) {
-        return;
-    }
-    Character &player_character = get_player_character();
-    if( load > 0 && fuel_left( fuel_type_muscle ) > 0 &&
-        player_character.has_effect( effect_winded ) ) {
-        cruise_velocity = 0;
-        if( velocity == 0 ) {
-            stop();
-        }
-    }
-    // we want this to update the activity level whenever we're using muscle power to move
-    if( load > 0 && fuel_left( fuel_type_muscle ) > 0 ) {
-        player_character.set_activity_level( ACTIVE_EXERCISE );
-        //do this as a function of current load
-        // But only if the player is actually there!
-        int eff_load = load / 10;
-        int mod = 4 * st; // strain
-        const int base_staminaRegen = static_cast<int>
-                                      ( get_option<float>( "PLAYER_BASE_STAMINA_REGEN_RATE" ) );
-        const int actual_staminaRegen = static_cast<int>( base_staminaRegen *
-                                        player_character.get_cardiofit() / player_character.get_cardio_acc_base() );
-        int base_burn = actual_staminaRegen - 3;
-        base_burn = std::max( eff_load / 3, base_burn );
-        //charge bionics when using muscle engine
-        const item muscle( "muscle" );
-        for( const bionic_id &bid : player_character.get_bionic_fueled_with_muscle() ) {
-            if( player_character.has_active_bionic( bid ) ) { // active power gen
-                // more pedaling = more power
-                player_character.mod_power_level( muscle.fuel_energy() *
-                                                  bid->fuel_efficiency *
-                                                  load / 1000 );
-                mod += eff_load / 5;
-            } else { // passive power gen
-                player_character.mod_power_level( muscle.fuel_energy() *
-                                                  bid->passive_fuel_efficiency *
-                                                  load / 1000 );
-                mod += eff_load / 10;
+        const itype_id &ft = vp.fuel_current();
+        if( idling ) {
+            if( ft == fuel_type_battery || ft == fuel_type_muscle ) {
+                continue; // batteries and muscle not relevant when idling
             }
         }
-        // decreased stamina burn scalable with load
-        if( player_character.has_active_bionic( bio_jointservo ) ) {
-            player_character.mod_power_level( units::from_kilojoule( -std::max( eff_load / 20, 1 ) ) );
-            mod -= std::max( eff_load / 5, 5 );
-        }
 
-        player_character.mod_stamina( -( base_burn + mod ) );
-        add_msg_debug( debugmode::DF_VEHICLE, "Load: %d", load );
-        add_msg_debug( debugmode::DF_VEHICLE, "Mod: %d", mod );
-        add_msg_debug( debugmode::DF_VEHICLE, "Burn: %d", -( base_burn + mod ) );
+        if( ft != fuel_type_muscle ) {
+            units::energy to_consume = engine_fuel_usage( vp ) * 1_seconds * fuel_modifier;
+            fuel_used_last_turn[ft] += to_consume;
+            units::energy &remainder = fuel_remainder[ft];
+            to_consume -= remainder;
+
+            if( to_consume > 0_J ) {
+                const units::energy consumed = drain_energy( ft, to_consume );
+                if( consumed < 0_J ) {
+                    add_msg_if_player_sees( global_part_pos3( vp ), _( "The %s's %s dies!" ), name, vp.info().name() );
+                    vp.enabled = false;
+                }
+                remainder = consumed - to_consume;
+            } else {
+                remainder = -to_consume;
+            }
+        } else { // muscle powered need special treatment
+            if( fuel_left( fuel_type_muscle ) > 0 ) {
+                Character &source = get_player_character();
+                source.set_activity_level( ACTIVE_EXERCISE );
+                {
+                    // engine stamina drain
+                    const int stamina_regen = static_cast<int>( get_option<float>( "PLAYER_BASE_STAMINA_REGEN_RATE" ) )
+                                              * source.get_cardiofit() / source.get_cardio_acc_base();
+                    const int stamina_burn = 4.0 * strain + std::max( load / 30, stamina_regen - 3 );
+                    source.mod_stamina( -stamina_burn );
+                    add_msg_debug( debugmode::DF_VEHICLE, "%s burned %d stamina", vp.name(), stamina_burn );
+                }
+                const units::energy muscle_fuel_energy = item( fuel_type_muscle ).fuel_energy();
+                //charge bionics when using muscle engine
+                for( const bionic_id &bid : source.get_bionic_fueled_with_muscle() ) {
+                    const bool bio_active = source.has_active_bionic( bid );
+                    const float bio_efficiency = bio_active ? bid->fuel_efficiency : bid->passive_fuel_efficiency;
+                    const int stamina_burn = bio_active ? ( load / 50 ) : ( load / 100 );
+                    const units::energy bio_power = muscle_fuel_energy * bio_efficiency * load / 1000;
+                    source.mod_power_level( bio_power );
+                    source.mod_stamina( -stamina_burn );
+                    add_msg_debug( debugmode::DF_VEHICLE, "%s (active %d) converted %d stamina to %d bionic kJ",
+                                   bid->name, bio_active ? "1" : "0", stamina_burn, units::to_kilojoule( bio_power ) );
+                }
+                // joint servo CBM reduces stamina burn scalable with load
+                if( source.has_active_bionic( bio_jointservo ) ) {
+                    const units::energy bio_power = -units::from_kilojoule( std::max( load / 200, 1 ) );
+                    const int mod_stamina = std::max( load / 50, 5 );
+                    source.mod_power_level( bio_power );
+                    source.mod_stamina( mod_stamina );
+                    add_msg_debug( debugmode::DF_VEHICLE, "%s converted %d bionic kJ for %d stamina",
+                                   bio_jointservo->name, units::to_kilojoule( bio_power ), mod_stamina );
+                }
+            }
+        }
     }
 }
 

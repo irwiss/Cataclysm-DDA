@@ -307,7 +307,7 @@ struct vehicle_part {
         int remaining_ammo_capacity() const;
 
         /** Type of fuel used by an engine */
-        itype_id fuel_current() const;
+        const itype_id &fuel_current() const;
         /** Set an engine to use a different type of fuel */
         bool fuel_set( const itype_id &fuel );
         /**
@@ -1303,15 +1303,6 @@ class vehicle
             bool fullsize = false, bool verbose = false, bool desc = false,
             bool isHorizontal = false );
 
-        /**
-         * Vehicle speed gauge
-         *
-         * Prints: `target speed` `<` `current speed` `speed unit`
-         * @param spacing Sets size of space between components
-         * @warning if spacing is negative it is changed to 0
-         */
-        void print_speed_gauge( const catacurses::window &win, const point &, int spacing = 0 ) const;
-
         // Pre-calculate mount points for (idir=0) - current direction or
         // (idir=1) - next turn direction
         void precalc_mounts( int idir, const units::angle &dir, const point &pivot );
@@ -1388,11 +1379,6 @@ class vehicle
         int consumption_per_hour( const itype_id &ftype, units::energy fuel_per_s ) const;
 
         void consume_fuel( int load, bool idling );
-
-        /**
-         * Maps used fuel to its basic (unscaled by load/strain) consumption.
-         */
-        std::map<itype_id, units::power> fuel_usage() const;
 
         /**
         * Fuel usage for specific engine
@@ -1630,8 +1616,8 @@ class vehicle
         // @param actual is current drag if true or nominal drag otherwise
         units::power static_drag( bool actual = true ) const;
 
-        // strain of engine(s) if it works higher that safe speed (0-1.0)
-        float strain() const;
+        // @return strain of engine(s) if it works higher that safe speed (0-1.0)
+        float get_engine_strain() const;
 
         // Calculate if it can move using its wheels
         bool sufficient_wheel_config() const;
