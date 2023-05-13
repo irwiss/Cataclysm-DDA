@@ -944,9 +944,6 @@ void vpart_info::check()
             if( part.power != 0_W && part.fuel_type == fuel_type_animal ) {
                 debugmsg( "engine part '%s' powered by '%s' can't define non-zero 'power'",
                           part.id.c_str(), part.fuel_type.str() );
-            } else if( part.power == 0_W && part.fuel_type != fuel_type_animal ) {
-                debugmsg( "engine part '%s' powered by '%s' must define non zero 'power'",
-                          part.id.c_str(), part.fuel_type.str() );
             }
         }
         // Parts with non-zero epower must have a flag that affects epower usage

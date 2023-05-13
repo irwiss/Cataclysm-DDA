@@ -87,6 +87,16 @@
     ]
   },
   {
+    "id": "portable_generator_v2",
+    "type": "vehicle",
+    "name": "Generator",
+    "blueprint": [ [ "o-" ] ],
+    "parts": [
+      { "x": 0, "y": 0, "parts": [ "frame", "small_storage_battery", "generator_gasoline_10kW" ] },
+      { "x": 1, "y": 0, "parts": [ "frame", "controls", { "part": "tank_small", "fuel": "gasoline" } ] }
+    ]
+  },
+  {
     "id": "makeshift_solar_farm",
     "type": "vehicle",
     "name": "Makeshift Solar Farm",

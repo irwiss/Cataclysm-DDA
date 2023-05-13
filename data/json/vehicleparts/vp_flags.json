@@ -91,6 +91,11 @@
     "info": "Provides motive power to move the vehicle if the vehicle has sufficient wheels.  Requires controls to turn on.  If it drains power, also requires a charged battery to start."
   },
   {
+    "id": "GENERATOR",
+    "type": "json_flag",
+    "info": "Generates electric power but cannot provide power to wheels."
+  },
+  {
     "id": "E_ALTERNATOR",
     "type": "json_flag",
     "info": "An alternator can be attached, and it will generate electrical power while the engine is on at the cost of some motive power."

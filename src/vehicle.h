@@ -405,6 +405,8 @@ struct vehicle_part {
 
         /** Can this part provide power or propulsion? */
         bool is_engine() const;
+        /** If true this part provides epower but not propulsion */
+        bool is_generator() const;
 
         /** Is this any type of vehicle light? */
         bool is_light() const;

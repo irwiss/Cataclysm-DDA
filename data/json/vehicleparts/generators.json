@@ -1,0 +1,53 @@
+[
+  {
+    "id": "gasoline_generator_i4",
+    "copy-from": "engine_gasoline",
+    "type": "ENGINE",
+    "//": "Loosely based on DuroMax XP12000EH Generator https://www.amazon.com/DuroMax-XP12000EH-000-Watt-Portable-Generator/dp/B01M0N8256/",
+    "name": { "str": "gasoline generator" },
+    "description": "A compact dual fuel generator capable of running on gasoline or propane, commonly used as backup or portable power source.",
+    "weight": "100 kg",
+    "volume": "370 L",
+    "price": 16000,
+    "price_postapoc": 10000,
+    "displacement": 450
+  },
+  {
+    "id": "generator_gasoline_10kW",
+    "type": "vehicle_part",
+    "categories": [ "movement" ],
+    "location": "engine_block",
+    "symbol": "*",
+    "color": "light_red",
+    "broken_color": "red",
+    "damage_modifier": 80,
+    "backfire_threshold": 0.25,
+    "backfire_freq": 20,
+    "noise_factor": 15,
+    "damaged_power_factor": 0.25,
+    "flags": [ "ENGINE", "GENERATOR", "E_COMBUSTION" ],
+    "fuel_type": "gasoline",
+    "fuel_options": [ "gasoline", "propane" ],
+    "m2c": 65,
+    "item": "gasoline_generator_i4",
+    "durability": 300,
+    "power": "0 W",
+    "epower": "10 kW",
+    "energy_consumption": "25 kW",
+    "breaks_into": [
+      { "item": "steel_lump", "count": [ 20, 30 ] },
+      { "item": "steel_chunk", "count": [ 20, 30 ] },
+      { "item": "scrap", "count": [ 20, 30 ] }
+    ],
+    "requirements": {
+      "install": { "skills": [ [ "mechanics", 1 ] ], "time": "60 m", "using": [ [ "vehicle_wrench_2", 1 ] ] },
+      "removal": { "skills": [ [ "mechanics", 1 ] ], "time": "30 m", "using": [ [ "vehicle_wrench_2", 1 ] ] },
+      "repair": {
+        "skills": [ [ "mechanics", 4 ] ],
+        "time": "60 m",
+        "using": [ [ "repair_welding_standard", 3 ], [ "repair_welding_alloys", 1 ], [ "vehicle_wrench_2", 1 ], [ "vehicle_screw", 1 ] ]
+      }
+    },
+    "damage_reduction": { "all": 50 }
+  }
+]

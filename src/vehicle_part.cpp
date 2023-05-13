@@ -562,6 +562,11 @@ bool vehicle_part::is_engine() const
     return info().has_flag( VPFLAG_ENGINE );
 }
 
+bool vehicle_part::is_generator() const
+{
+    return info().has_flag( "GENERATOR" );
+}
+
 bool vehicle_part::is_light() const
 {
     const vpart_info &vp = info();

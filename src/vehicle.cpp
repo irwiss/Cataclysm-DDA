@@ -4543,10 +4543,12 @@ void vehicle::consume_fuel( int load, bool idling )
         return;
     }
     const double strain = get_engine_strain();
-    const double fuel_modifier = load * ( 1.0 + strain * strain * 100.0 ) / 1000.0;
     for( const int p : engines ) {
         vehicle_part &vp = parts[p];
         if( !vp.enabled ) {
+            continue;
+        }
+        if( !vp.is_generator() && !engine_on ) {
             continue;
         }
 
@@ -4555,8 +4557,12 @@ void vehicle::consume_fuel( int load, bool idling )
             if( ft == fuel_type_battery || ft == fuel_type_muscle ) {
                 continue; // batteries and muscle not relevant when idling
             }
+            if( vp.is_generator() ) {
+                load = 1000;
+            }
         }
 
+        const double fuel_modifier = load * ( 1.0 + strain * strain * 100.0 ) / 1000.0;
         if( ft != fuel_type_muscle ) {
             units::energy to_consume = engine_fuel_usage( vp ) * 1_seconds * fuel_modifier;
             fuel_used_last_turn[ft] += to_consume;
@@ -4565,6 +4571,8 @@ void vehicle::consume_fuel( int load, bool idling )
 
             if( to_consume > 0_J ) {
                 const units::energy consumed = drain_energy( ft, to_consume );
+                add_msg_debug( debugmode::DF_VEHICLE, "%s burned %d kJ of %s at load %d",
+                               vp.name(), units::to_kilojoule( consumed ), ft.str(), load );
                 if( consumed < 0_J ) {
                     add_msg_if_player_sees( global_part_pos3( vp ), _( "The %s's %s dies!" ), name, vp.info().name() );
                     vp.enabled = false;
@@ -5237,34 +5245,15 @@ void vehicle::idle( bool on_map )
     avg_velocity = ( velocity + avg_velocity ) / 2;
 
     power_parts();
-    Character &player_character = get_player_character();
-    if( engine_on && total_power() > 0_W ) {
-        // Consume fuel at here only if the vehicle is not thrusting.
-        // See the condition under which vehicle::thrust() is called in vehicle::gain_moves().
-        if( !( ( player_in_control( player_character ) || is_following || is_patrolling ) &&
-               cruise_velocity != 0 ) ) {
-            int idle_rate = alternator_load;
-            if( idle_rate < 10 ) {
-                idle_rate = 10;    // minimum idle is 1% of full throttle
-            }
-            if( has_engine_type_not( fuel_type_muscle, true ) ) {
-                consume_fuel( idle_rate, true );
-            }
 
-            if( on_map ) {
-                noise_and_smoke( idle_rate, 1_turns );
-            }
-        }
-    } else {
-        if( engine_on &&
-            ( has_engine_type_not( fuel_type_muscle, true ) && has_engine_type_not( fuel_type_animal, true ) &&
-              has_engine_type_not( fuel_type_wind, true ) && has_engine_type_not( fuel_type_mana, true ) ) ) {
-            add_msg_if_player_sees( global_pos3(), _( "The %s's engine dies!" ), name );
-        }
-        engine_on = false;
+    // minimum idle is 1% of full throttle
+    const int idle_rate = std::max( 10, alternator_load );
+    consume_fuel( idle_rate, true );
+    if( engine_on && on_map ) {
+        noise_and_smoke( idle_rate, 1_turns );
     }
 
-    if( !warm_enough_to_plant( player_character.pos() ) ) {
+    if( !warm_enough_to_plant( get_player_character().pos() ) ) {
         for( int i : planters ) {
             vehicle_part &vp = parts[ i ];
             if( vp.enabled ) {
