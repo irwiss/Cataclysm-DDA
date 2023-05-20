@@ -6,6 +6,7 @@
 #include "cata_catch.h"
 #include "creature.h"
 #include "game.h"
+#include "make_static.h"
 #include "map.h"
 #include "map_helpers.h"
 #include "mutation.h"
@@ -306,6 +307,7 @@ static void configure_swimmer( avatar &swimmer, const move_mode_id move_mode,
         level.toggleTraining();
     }
 
+    swimmer.toggle_trait( STATIC( trait_id( "DISIMMUNE" ) ) );
     for( const std::string &trait : config.traits.traits ) {
         swimmer.toggle_trait( trait_id( trait ) );
     }
