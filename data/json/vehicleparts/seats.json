@@ -26,7 +26,6 @@
     "abstract": "seat_abstract",
     "breaks_into": "ig_vp_seat",
     "broken_color": "red",
-    "broken_symbol": "*",
     "categories": [ "operations", "passengers" ],
     "color": "red",
     "comfort": 2,
@@ -50,8 +49,8 @@
       }
     },
     "size": "25 L",
-    "symbol": "#",
-    "type": "vehicle_part"
+    "type": "vehicle_part",
+    "variants": [ { "symbols": "#", "symbols_broken": "*" } ]
   },
   {
     "abstract": "seat_leather_abstract",
@@ -66,7 +65,6 @@
     "abstract": "reclining_seat_abstract",
     "breaks_into": "ig_vp_seat",
     "broken_color": "red",
-    "broken_symbol": "*",
     "categories": [ "operations", "passengers" ],
     "color": "red",
     "comfort": 3,
@@ -90,8 +88,8 @@
       }
     },
     "size": "6250 ml",
-    "symbol": "#",
-    "type": "vehicle_part"
+    "type": "vehicle_part",
+    "variants": [ { "symbols": "#", "symbols_broken": "*" } ]
   },
   {
     "abstract": "reclining_seat_leather_abstract",
@@ -106,7 +104,6 @@
     "abstract": "seat_back_abstract",
     "breaks_into": "ig_vp_seat",
     "broken_color": "red",
-    "broken_symbol": "*",
     "categories": [ "operations", "passengers" ],
     "color": "red",
     "comfort": 4,
@@ -130,8 +127,15 @@
       }
     },
     "size": "30 L",
-    "symbols": { "vertical": "#", "vertical_left": "#", "vertical_right": "#", "left": "#", "right": "#" },
-    "type": "vehicle_part"
+    "type": "vehicle_part",
+    "variants": [
+      { "symbols": "h", "symbols_broken": "*" },
+      { "id": "vertical", "label": "Vertical", "symbols": "#", "symbols_broken": "*" },
+      { "id": "vertical_left", "label": "Left Vertical", "symbols": "#", "symbols_broken": "*" },
+      { "id": "vertical_right", "label": "Right Vertical", "symbols": "#", "symbols_broken": "*" },
+      { "id": "left", "label": "Left", "symbols": "#", "symbols_broken": "*" },
+      { "id": "right", "label": "Right", "symbols": "#", "symbols_broken": "*" }
+    ]
   },
   {
     "abstract": "seat_back_leather_abstract",
@@ -147,10 +151,8 @@
     "abstract": "saddle_abstract",
     "name": { "str": "saddle" },
     "categories": [ "operations", "passengers" ],
-    "symbol": "#",
     "looks_like": "seat",
     "color": "red",
-    "broken_symbol": "*",
     "broken_color": "red",
     "damage_modifier": 20,
     "damage_reduction": { "all": 3, "bash": 5 },
@@ -171,17 +173,16 @@
       }
     },
     "flags": [ "SEAT", "BOARDABLE", "NONBELTABLE" ],
-    "breaks_into": [ { "item": "leather", "prob": 50 }, { "item": "scrap", "count": [ 1, 2 ] } ]
+    "breaks_into": [ { "item": "leather", "prob": 50 }, { "item": "scrap", "count": [ 1, 2 ] } ],
+    "variants": [ { "symbols": "#", "symbols_broken": "*" } ]
   },
   {
     "type": "vehicle_part",
     "abstract": "folding_seat_abstract",
     "name": { "str": "foldable seat" },
     "categories": [ "operations", "passengers" ],
-    "symbol": "#",
     "looks_like": "seat",
     "color": "red",
-    "broken_symbol": "*",
     "broken_color": "red",
     "damage_modifier": 10,
     "damage_reduction": { "all": 3, "bash": 5 },
@@ -200,13 +201,13 @@
       }
     },
     "flags": [ "SEAT", "BOARDABLE", "NONBELTABLE" ],
-    "breaks_into": [ { "item": "cotton_patchwork", "count": [ 1, 6 ] } ]
+    "breaks_into": [ { "item": "cotton_patchwork", "count": [ 1, 6 ] } ],
+    "variants": [ { "symbols": "#", "symbols_broken": "*" } ]
   },
   {
     "abstract": "metal_bench_abstract",
     "breaks_into": "ig_vp_prison_bench",
     "broken_color": "dark_gray",
-    "broken_symbol": "*",
     "categories": [ "operations", "passengers" ],
     "color": "dark_gray",
     "comfort": 0,
@@ -224,92 +225,92 @@
       "removal": { "skills": [ [ "mechanics", 2 ] ], "time": "30 m", "using": "vehicle_weld_removal" },
       "repair": { "skills": [ [ "mechanics", 2 ] ], "time": "60 m", "using": [ [ "repair_welding_standard", 3 ] ] }
     },
-    "symbol": "#",
-    "type": "vehicle_part"
+    "type": "vehicle_part",
+    "variants": [ { "symbols": "#", "symbols_broken": "*" } ]
   },
   {
     "copy-from": "seat_abstract",
     "id": "seat",
-    "symbol": "#",
-    "type": "vehicle_part"
+    "type": "vehicle_part",
+    "variants": [ { "symbols": "#", "symbols_broken": "*" } ]
   },
   {
     "copy-from": "seat_abstract",
     "id": "seat_swivel_chair",
-    "symbol": "#",
-    "type": "vehicle_part"
+    "type": "vehicle_part",
+    "variants": [ { "symbols": "#", "symbols_broken": "*" } ]
   },
   {
     "copy-from": "seat_abstract",
     "id": "seat_windshield",
-    "symbol": "#",
-    "type": "vehicle_part"
+    "type": "vehicle_part",
+    "variants": [ { "symbols": "#", "symbols_broken": "*" } ]
   },
   {
     "copy-from": "seat_leather_abstract",
     "id": "seat_leather",
-    "symbol": "#",
-    "type": "vehicle_part"
+    "type": "vehicle_part",
+    "variants": [ { "symbols": "#", "symbols_broken": "*" } ]
   },
   {
     "copy-from": "seat_leather_abstract",
     "id": "seat_windshield_leather",
-    "symbol": "#",
-    "type": "vehicle_part"
+    "type": "vehicle_part",
+    "variants": [ { "symbols": "#", "symbols_broken": "*" } ]
   },
   {
     "copy-from": "reclining_seat_abstract",
     "id": "reclining_seat",
-    "symbol": "#",
-    "type": "vehicle_part"
+    "type": "vehicle_part",
+    "variants": [ { "symbols": "#", "symbols_broken": "*" } ]
   },
   {
     "copy-from": "reclining_seat_abstract",
     "id": "reclining_seat_windshield",
-    "symbol": "#",
-    "type": "vehicle_part"
+    "type": "vehicle_part",
+    "variants": [ { "symbols": "#", "symbols_broken": "*" } ]
   },
   {
     "copy-from": "reclining_seat_leather_abstract",
     "id": "reclining_seat_leather",
-    "symbol": "#",
-    "type": "vehicle_part"
+    "type": "vehicle_part",
+    "variants": [ { "symbols": "#", "symbols_broken": "*" } ]
   },
   {
     "copy-from": "reclining_seat_leather_abstract",
     "id": "reclining_seat_windshield_leather",
-    "symbol": "#",
-    "type": "vehicle_part"
+    "type": "vehicle_part",
+    "variants": [ { "symbols": "#", "symbols_broken": "*" } ]
   },
   {
     "copy-from": "seat_back_abstract",
     "id": "seat_back",
-    "symbol": "#",
-    "type": "vehicle_part"
+    "type": "vehicle_part",
+    "variants": [ { "symbols": "#", "symbols_broken": "*" } ]
   },
   {
     "copy-from": "seat_back_leather_abstract",
     "id": "seat_back_leather",
-    "symbol": "#",
-    "type": "vehicle_part"
+    "type": "vehicle_part",
+    "variants": [ { "symbols": "#", "symbols_broken": "*" } ]
   },
   {
     "copy-from": "saddle_abstract",
     "id": "saddle",
-    "symbol": "#",
-    "type": "vehicle_part"
+    "type": "vehicle_part",
+    "variants": [ { "symbols": "#", "symbols_broken": "*" } ]
   },
   {
     "copy-from": "saddle_abstract",
     "id": "saddle_pedal",
-    "symbol": "#",
-    "type": "vehicle_part"
+    "type": "vehicle_part",
+    "variants": [ { "symbols": "#", "symbols_broken": "*" } ]
   },
   {
     "copy-from": "saddle_abstract",
     "id": "saddle_motor",
-    "symbol": "#",
-    "type": "vehicle_part"
+    "type": "vehicle_part",
+    "variants": [ { "symbols": "#", "symbols_broken": "*" } ]
   },
   {
     "copy-from": "saddle_abstract",
@@ -319,13 +320,13 @@
   {
     "copy-from": "folding_seat_abstract",
     "id": "folding_seat",
-    "symbol": "#",
-    "type": "vehicle_part"
+    "type": "vehicle_part",
+    "variants": [ { "symbols": "#", "symbols_broken": "*" } ]
   },
   {
     "copy-from": "metal_bench_abstract",
     "id": "metal_bench",
-    "symbol": "#",
-    "type": "vehicle_part"
+    "type": "vehicle_part",
+    "variants": [ { "symbols": "#", "symbols_broken": "*" } ]
   }
 ]

@@ -46,24 +46,10 @@ char vehicle::part_sym( const int p, const bool exact, const bool include_fake )
     }
 
     const vehicle_part &vp = parts.at( displayed_part );
-    const vpart_info &vp_info = part_info( displayed_part );
-
-    if( part_flag( displayed_part, VPFLAG_OPENABLE ) && vp.open ) {
-        // open door
-        return '\'';
+    if( vp.open && vp.info().has_flag( VPFLAG_OPENABLE ) ) {
+        return '\''; // open door
     } else {
-        if( vp.is_broken() ) {
-            return vp_info.get_symbol_broken();
-        } else if( vp.variant.empty() ) {
-            return vp_info.get_symbol();
-        } else {
-            const auto vp_symbol = vp_info.symbols.find( vp.variant );
-            if( vp_symbol == vp_info.symbols.end() ) {
-                return vp_info.get_symbol();
-            } else {
-                return vp_symbol->second;
-            }
-        }
+        return vp.get_symbol_and_color( tileray() ).first;
     }
 }
 
@@ -112,23 +98,16 @@ nc_color vehicle::part_color( const int p, const bool exact, const bool include_
     }
 
     if( parm >= 0 ) {
-        col = part_info( parm ).color;
+        const vehicle_part &vp_armor = parts[parm];
+        col = vp_armor.get_symbol_and_color( tileray() ).second;
     } else {
         const int displayed_part = exact ? p : part_displayed_at( parts[p].mount, include_fake );
 
         if( displayed_part < 0 || displayed_part >= static_cast<int>( parts.size() ) ) {
             return c_black;
         }
-        if( parts[displayed_part].blood > 200 ) {
-            col = c_red;
-        } else if( parts[displayed_part].blood > 0 ) {
-            col = c_light_red;
-        } else if( parts[displayed_part].is_broken() ) {
-            col = part_info( displayed_part ).color_broken;
-        } else {
-            col = part_info( displayed_part ).color;
-        }
-
+        const vehicle_part &vp = parts[displayed_part];
+        return vp.get_symbol_and_color( tileray() ).second;
     }
 
     if( exact ) {
@@ -139,7 +118,7 @@ nc_color vehicle::part_color( const int p, const bool exact, const bool include_
     int curtains = part_with_feature( p, VPFLAG_CURTAIN, false );
     if( curtains >= 0 ) {
         if( part_with_feature( p, VPFLAG_WINDOW, true ) >= 0 && !parts[curtains].open ) {
-            col = part_info( curtains ).color;
+            col = parts[curtains].get_symbol_and_color( tileray() ).second;
         }
     }
 

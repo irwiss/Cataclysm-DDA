@@ -125,6 +125,32 @@ std::string vehicle_part::name( bool with_prefix ) const
     return res;
 }
 
+std::pair<int, nc_color> vehicle_part::get_symbol_and_color( const tileray &ray ) const
+{
+    const vpart_info &vpi = info();
+    std::map<std::string, vpart_variant>::const_iterator variant_it = vpi.variants.find( variant );
+    if( variant_it == vpi.variants.end() ) {
+        debugmsg( "vpart '%s' has no variant '%s'", vpi.get_id().str(), variant );
+        variant_it = vpi.variants.begin(); // fallback to first
+    }
+    const bool broken = is_broken();
+    nc_color col;
+    if( blood > 200 ) {
+        col = c_red;
+    } else if( blood > 0 ) {
+        col = c_light_red;
+    } else if( broken ) {
+        col = vpi.color_broken;
+    } else {
+        col = vpi.color;
+    }
+    // TODO: make the following 2 rotate via tileray
+    const std::string symbol = broken
+                               ? variant_it->second.symbols_broken[ray.dir8()]
+                               : variant_it->second.symbols[ray.dir8()];
+    return { symbol[0], col };
+}
+
 int vehicle_part::hp() const
 {
     const int dur = info().durability;

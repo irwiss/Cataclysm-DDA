@@ -2160,32 +2160,28 @@ bool cata_tiles::draw_from_id_string_internal( const std::string &id, TILE_CATEG
                 col = mt.color;
             }
         } else if( category == TILE_CATEGORY::VEHICLE_PART ) {
+            const tileray ray = tileray( units::from_degrees( rota ) );
             const std::pair<std::string,
                   std::string> &vpid_data = get_vpart_str_variant( found_id.substr( 3 ) );
             const vpart_id vpid( vpid_data.first );
             if( vpid.is_valid() ) {
-                const vpart_info &v = vpid.obj();
+                vehicle_part vp( vpid, item( vpid->base_item ) );
+                vp.variant = variant;
+                const auto &[vsym, vcol] = vp.get_symbol_and_color( ray );
 
                 if( subtile == open_ ) {
                     sym = '\'';
                 } else if( subtile == broken ) {
                     sym = v.get_symbol_broken();
                 } else {
-                    sym = v.get_symbol();
-                    if( !vpid_data.second.empty() ) {
-                        const auto &var_data = v.symbols.find( vpid_data.second );
-                        if( var_data != v.symbols.end() ) {
-                            sym = var_data->second;
-                        }
-                    }
+                    sym = vsym;
                 }
                 subtile = -1;
 
-                tileray face = tileray( units::from_degrees( rota ) );
-                sym = special_symbol( face.dir_symbol( sym ) );
+                sym = special_symbol( ray.dir_symbol( sym ) );
                 rota = 0;
 
-                col = v.color;
+                col = vcol;
             }
         } else if( category == TILE_CATEGORY::FIELD ) {
             const field_type_id fid = field_type_id( found_id );
@@ -3506,10 +3502,11 @@ bool cata_tiles::draw_vpart( const tripoint &p, lit_level ll, int &height_3d,
     const bool overridden = override != vpart_override.end();
     map &here = get_map();
     // first memorize the actual vpart
-    const optional_vpart_position vp = here.veh_at( p );
-    if( vp && !invisible[0] ) {
-        const vehicle &veh = vp->vehicle();
-        const int veh_part = vp->part_index();
+    const optional_vpart_position ovp = here.veh_at( p );
+    if( ovp && !invisible[0] ) {
+        const vehicle &veh = ovp->vehicle();
+        const int veh_part = ovp->part_index();
+        const vehicle_part &vp = veh.part( veh_part );
         // Gets the visible part, should work fine once tileset vp_ids are updated to work
         // with the vehicle part json ids
         // get the vpart_id
@@ -3527,14 +3524,12 @@ bool cata_tiles::draw_vpart( const tripoint &p, lit_level ll, int &height_3d,
                 you.memorize_tile( here.getabs( p ), vpname, subtile, rotation );
             }
             if( !overridden ) {
-                const std::optional<vpart_reference> cargopart = vp.part_with_feature( "CARGO", true );
-                const bool draw_highlight = cargopart &&
-                                            !veh.get_items( cargopart->part_index() ).empty();
+                const std::optional<vpart_reference> ovp_cargo = ovp.part_with_feature( "CARGO", true );
+                const bool draw_highlight = ovp_cargo && !veh.get_items( ovp_cargo->part_index() ).empty();
 
                 int height_3d_temp = 0;
-                const bool ret =
-                    draw_from_id_string( vpname, TILE_CATEGORY::VEHICLE_PART, empty_string, p,
-                                         subtile, rotation, ll, nv_goggles_activated, height_3d_temp );
+                const bool ret = draw_from_id_string( vpname, TILE_CATEGORY::VEHICLE_PART, empty_string, p,
+                                                      subtile, rotation, ll, nv_goggles_activated, height_3d_temp, 0, vp.variant );
                 if( !roof ) {
                     height_3d = height_3d_temp;
                 }

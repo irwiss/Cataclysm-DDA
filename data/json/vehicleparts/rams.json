@@ -4,9 +4,6 @@
     "type": "vehicle_part",
     "categories": [ "warfare" ],
     "location": "structure",
-    "symbol": "X",
-    "symbols": { "rear": "X", "left": "X", "right": "X" },
-    "broken_symbol": "*",
     "damage_modifier": 150,
     "description": "A reinforced ram.  Place at the edge of vehicle to reduce damage taken in collisions, and to increase damaged delivered in collisions, if the ram is the first vehicle part to collide.",
     "requirements": {
@@ -14,7 +11,18 @@
       "removal": { "skills": [ [ "mechanics", 2 ] ], "time": "30 m", "using": [ [ "vehicle_weld_removal", 1 ] ] },
       "repair": { "skills": [ [ "mechanics", 3 ] ], "time": "60 m", "using": [ [ "repair_welding_standard", 1 ] ] }
     },
-    "flags": [ "PROTRUSION", "OBSTACLE" ]
+    "flags": [ "PROTRUSION", "OBSTACLE" ],
+    "variants": [
+      { "symbols": "X", "symbols_broken": "*" },
+      { "id": "left", "label": "Left", "symbols": [ "X", "c", "X", "c", "X", "c", "X", "c" ], "symbols_broken": "*" },
+      { "id": "rear", "label": "Rear", "symbols": [ "X", "c", "X", "c", "X", "c", "X", "c" ], "symbols_broken": "*" },
+      {
+        "id": "right",
+        "label": "Right",
+        "symbols": [ "X", "c", "X", "c", "X", "c", "X", "c" ],
+        "symbols_broken": "*"
+      }
+    ]
   },
   {
     "id": "ram_alloy",
@@ -161,7 +169,6 @@
     "copy-from": "ram_blaze",
     "type": "vehicle_part",
     "name": { "str": "tied mattress" },
-    "symbol": "=",
     "item": "mattress",
     "color": "white",
     "damage_modifier": 50,
@@ -181,8 +188,6 @@
     "name": { "str": "shredder" },
     "item": "tearer",
     "location": "structure",
-    "symbol": "*",
-    "broken_symbol": "x",
     "categories": [ "warfare" ],
     "color": "dark_gray",
     "broken_color": "dark_gray",
@@ -197,6 +202,7 @@
       "repair": { "skills": [ [ "mechanics", 6 ] ], "time": "60 m", "using": [ [ "repair_welding_standard", 1 ] ] }
     },
     "flags": [ "UNMOUNT_ON_DAMAGE", "SHARP", "PROTRUSION" ],
-    "damage_reduction": { "all": 40 }
+    "damage_reduction": { "all": 40 },
+    "variants": [ { "symbols": "*", "symbols_broken": "x" } ]
   }
 ]

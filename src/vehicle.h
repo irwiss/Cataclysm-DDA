@@ -271,6 +271,9 @@ struct vehicle_part {
          */
         std::string name( bool with_prefix = true ) const;
 
+        // @returns symbol and color for this part
+        std::pair<int, nc_color> get_symbol_and_color( const tileray &ray ) const;
+
         struct carried_part_data {
             tripoint mount;        // if value is tripoint_zero this is the pivot
             units::angle face_dir; // direction relative to the carrier vehicle

@@ -340,7 +340,6 @@
     "name": { "str": "vehicle tank (60L)" },
     "item": "metal_tank_test",
     "location": "fuel_source",
-    "symbol": "O",
     "broken_color": "red",
     "durability": 150,
     "description": "A storage space for holding liquids.  If filled with the appropriate fuel for the vehicle's engine, the engine will automatically draw fuel from the tank when the engine is on.  If filled with water, you can access the water from a water faucet, if one is installed in the vehicle.  You can also use a rubber hose to siphon liquids out of a tank.",
@@ -361,17 +360,16 @@
       "repair": { "skills": [ [ "mechanics", 1 ] ], "time": "45 m", "using": [ [ "repair_welding_standard", 2 ] ] }
     },
     "flags": [ "FLUIDTANK" ],
-    "damage_reduction": { "all": 28, "stab": 12 }
+    "damage_reduction": { "all": 28, "stab": 12 },
+    "variants": [ { "symbols": "O", "symbols_broken": "#" } ]
   },
   {
     "type": "vehicle_part",
     "id": "ap_fridge_test",
     "name": { "str": "fridge" },
-    "symbol": "H",
     "looks_like": "f_fridge",
     "categories": [ "cargo" ],
     "color": "light_blue",
-    "broken_symbol": "#",
     "broken_color": "light_blue",
     "damage_modifier": 80,
     "durability": 100,
@@ -397,7 +395,8 @@
       { "item": "hose", "prob": 50 },
       { "item": "motor_tiny", "prob": 25 }
     ],
-    "damage_reduction": { "all": 32 }
+    "damage_reduction": { "all": 32 },
+    "variants": [ { "symbols": "H", "symbols_broken": "#" } ]
   },
   {
     "id": "test_van",

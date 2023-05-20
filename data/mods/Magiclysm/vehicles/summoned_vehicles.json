@@ -43,10 +43,8 @@
     "type": "vehicle_part",
     "id": "mana_frame",
     "name": "mana frame",
-    "symbol": "O",
     "categories": [ "movement", "hull" ],
     "color": "magenta",
-    "broken_symbol": "M",
     "broken_color": "red",
     "damage_modifier": 10,
     "noise_factor": 1,
@@ -78,7 +76,8 @@
       "MAGIC_FOLLOW",
       "FLOATS"
     ],
-    "damage_reduction": { "all": 12 }
+    "damage_reduction": { "all": 12 },
+    "variants": [ { "symbols": "O", "symbols_broken": "M" } ]
   },
   {
     "id": "MAGIC_FOLLOW",

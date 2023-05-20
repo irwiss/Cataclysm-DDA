@@ -19,6 +19,7 @@
   {
     "id": "folding_orichalcum_frame",
     "type": "vehicle_part",
+    "copy-from": "frame_abstract",
     "name": "foldable orichalcum frame",
     "item": "fold_orichalcum_frame",
     "location": "structure",

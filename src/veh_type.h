@@ -238,6 +238,19 @@ class vpart_category
         int priority_ = 0; // order of tab in the UI
 };
 
+class vpart_variant
+{
+    public:
+        std::string id;
+        translation label;
+        std::array<std::string, 8> symbols;
+        std::array<std::string, 8> symbols_broken;
+
+    private:
+        friend class vpart_info;
+        void load( const JsonObject &jo, bool was_loaded );
+};
+
 class vpart_info
 {
     public:
@@ -341,10 +354,6 @@ class vpart_info
         time_duration get_folding_time() const;
         // @returns time required for unfolding this part
         time_duration get_unfolding_time() const;
-        // @returns symbol for non-broken part
-        int get_symbol() const;
-        // @returns symbol for broken part
-        int get_symbol_broken() const;
 
     private:
         std::set<std::string> flags;
@@ -381,17 +390,8 @@ class vpart_info
         /** Name from vehicle part definition which if set overrides the base item name */
         translation name_;
 
-        /**
-         * Symbol of part which will be translated as follows:
-         * y, u, n, b to NW, NE, SE, SW lines correspondingly
-         * h, j, c to horizontal, vertical, cross correspondingly
-         */
-        std::string symbol_ = "h";
-        std::string symbol_broken_ = "#";
-
     public:
-        /* map of standard variant names to symbols */
-        std::map<std::string, int> symbols;
+        std::map<std::string, vpart_variant> variants;
 
         /** Required skills to install, repair, or remove this component */
         std::map<skill_id, int> install_skills;

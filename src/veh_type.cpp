@@ -391,17 +391,25 @@ void vpart_info::load( const JsonObject &jo, const std::string &src )
     assign( jo, "default_ammo", def.default_ammo );
     assign( jo, "folded_volume", def.folded_volume );
     assign( jo, "size", def.size );
-    assign( jo, "symbol", def.symbol_ );
-    assign( jo, "broken_symbol", def.symbol_broken_ );
     assign( jo, "bonus", def.bonus );
     assign( jo, "cargo_weight_modifier", def.cargo_weight_modifier );
     assign( jo, "categories", def.categories );
     assign( jo, "flags", def.flags );
     assign( jo, "description", def.description );
+    assign( jo, "color", def.color );
+    assign( jo, "broken_color", def.color_broken );
 
     assign( jo, "comfort", def.comfort );
     assign( jo, "floor_bedding_warmth", def.floor_bedding_warmth );
     assign( jo, "bonus_fire_warmth_feet", def.bonus_fire_warmth_feet );
+
+    if( jo.has_array( "variants" ) )  {
+        for( const JsonObject jo_variant : jo.get_array( "variants" ) ) {
+            vpart_variant v;
+            v.load( jo_variant, true );
+            def.variants[v.id] = v;
+        }
+    }
 
     if( jo.has_member( "transform_terrain" ) ) {
         JsonObject jttd = jo.get_object( "transform_terrain" );
@@ -434,28 +442,7 @@ void vpart_info::load( const JsonObject &jo, const std::string &src )
                        def.repair_moves );
     }
 
-    if( jo.has_string( "symbol" ) ) {
-        if( !variant_id.empty() ) {
-            def.symbols[variant_id] = def.get_symbol();
-        }
-    }
-    if( jo.has_object( "symbols" ) ) {
-        JsonObject jo_variants = jo.get_object( "symbols" );
-        for( const auto &vp_variant_pair : vpart_variants ) {
-            const std::string &vp_variant = vp_variant_pair.first;
-            if( jo_variants.has_string( vp_variant ) ) {
-                def.symbols[ vp_variant ] = static_cast<uint8_t>( jo_variants.get_string( vp_variant )[ 0 ] );
-            }
-        }
-    }
     jo.read( "looks_like", def.looks_like );
-
-    if( jo.has_member( "color" ) ) {
-        def.color = color_from_string( jo.get_string( "color" ) );
-    }
-    if( jo.has_member( "broken_color" ) ) {
-        def.color_broken = color_from_string( jo.get_string( "broken_color" ) );
-    }
 
     if( jo.has_member( "breaks_into" ) ) {
         def.breaks_into_group = item_group::load_item_group(
@@ -852,21 +839,6 @@ void vpart_info::check()
         for( const auto &f : part.get_flags() ) {
             if( !json_flag::get( f ) ) {
                 debugmsg( "vehicle part %s has unknown flag %s", part.id.c_str(), f.c_str() );
-            }
-        }
-        // Default symbol is always needed in case an unknown variant is encountered
-        if( mk_wcwidth( part.get_symbol() ) != 1 ) {
-            debugmsg( "vehicle part %s defined a symbol that is not 1 console cell wide.",
-                      part.id.str() );
-        }
-        if( mk_wcwidth( part.get_symbol_broken() ) != 1 ) {
-            debugmsg( "vehicle part %s defined a broken symbol that is not 1 console cell wide.",
-                      part.id.str() );
-        }
-        for( const std::pair<const std::string, int> &sym : part.symbols ) {
-            if( mk_wcwidth( sym.second ) != 1 ) {
-                debugmsg( "vehicle part %s defined a variant symbol that is not 1 console cell wide.",
-                          part.id.str() );
             }
         }
         if( part.durability <= 0 ) {
@@ -1271,14 +1243,30 @@ time_duration vpart_info::get_unfolding_time() const
     return unfolding_time;
 }
 
-int vpart_info::get_symbol() const
+void vpart_variant::load( const JsonObject &jo, bool was_loaded )
 {
-    return symbol_[0];
-}
-
-int vpart_info::get_symbol_broken() const
-{
-    return symbol_broken_[0];
+    optional( jo, was_loaded, "id", id, "" );
+    if( jo.has_string( "label" ) ) {
+        label = to_translation( "vpart_variants", jo.get_string( "label" ) );
+    } else {
+        label = to_translation( "vpart_variants", "default" );
+    }
+    const auto read_symbs = [this, &jo]( std::array<std::string, 8> &dst, const std::string & member ) {
+        if( jo.has_array( member ) ) {
+            const JsonArray ja = jo.get_array( member );
+            if( ja.size() == 8 ) {
+                assign( jo, member, dst );
+                return;
+            }
+        } else if( jo.has_string( member ) ) {
+            dst.fill( jo.get_string( member ) );
+            return;
+        }
+        dst.fill( "?" );
+        debugmsg( "member '%s' of vehicle_part '%s' must be string or array of length 8", member, id );
+    };
+    read_symbs( symbols, "symbols" );
+    read_symbs( symbols_broken, "symbols_broken" );
 }
 
 /** @relates string_id */
