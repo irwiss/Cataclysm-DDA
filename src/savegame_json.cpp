@@ -3231,26 +3231,21 @@ void item::serialize( JsonOut &json ) const
 void vehicle_part::deserialize( const JsonObject &data )
 {
     data.allow_omitted_members();
-    vpart_id pid;
-    data.read( "id", pid );
+    vpart_id id;
+    data.read( "id", id );
+    data.read( "variant", variant );
 
-    const vpart_migration *migration = vpart_migration::find_migration( pid );
+    const vpart_migration *migration = vpart_migration::find_migration( id );
     if( migration != nullptr ) {
-        DebugLog( D_WARNING, D_MAIN ) << "vehicle_part::deserialize migrating '" << pid.str()
+        DebugLog( D_WARNING, D_MAIN ) << "vehicle_part::deserialize migrating '" << id.str()
                                       << "' to '" << migration->part_id_new.str() << "'";
-        pid = migration->part_id_new;
+        id = migration->part_id_new;
     }
 
-    std::tie( pid, variant ) = get_vpart_id_variant( pid );
-
-    // if we don't know what type of part it is, it'll cause problems later.
-    if( !pid.is_valid() ) {
+    if( !id.is_valid() ) {
         data.throw_error_at( "id", "bad vehicle part" );
     }
-    info_ = &pid.obj();
-    if( variant.empty() ) {
-        data.read( "variant", variant );
-    }
+    info_ = &id.obj();
 
     if( migration != nullptr ) { // migration overrides the base item
         data.get_member( "base" ); // mark member as visited

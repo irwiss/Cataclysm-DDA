@@ -140,34 +140,6 @@ static std::map<vpart_id, vpart_migration> vpart_migrations;
 
 static DynamicDataLoader::deferred_json deferred;
 
-std::pair<std::string, std::string> get_vpart_str_variant( const std::string &vpid )
-{
-    for( const auto &vp_variant_pair : vpart_variants ) {
-        const std::string &vp_variant = vp_variant_pair.first;
-        const size_t loc = vpid.rfind( "_" + vp_variant );
-        if( loc != std::string::npos && ( ( loc + vp_variant.size() + 1 ) == vpid.size() ) ) {
-            return std::make_pair( vpid.substr( 0, loc ), vp_variant );
-        }
-    }
-    return std::make_pair( vpid, "" );
-}
-
-std::pair<vpart_id, std::string> get_vpart_id_variant( const vpart_id &vpid )
-{
-    std::string final_vpid;
-    std::string variant_id;
-    std::tie( final_vpid, variant_id ) = get_vpart_str_variant( vpid.str() );
-    return std::make_pair( vpart_id( final_vpid ), variant_id );
-}
-
-std::pair<vpart_id, std::string> get_vpart_id_variant( const std::string &vpid )
-{
-    std::string final_vpid;
-    std::string variant_id;
-    std::tie( final_vpid, variant_id ) = get_vpart_str_variant( vpid );
-    return std::make_pair( vpart_id( final_vpid ), variant_id );
-}
-
 /** @relates string_id */
 template<>
 bool string_id<vpart_info>::is_valid() const
@@ -181,16 +153,9 @@ const vpart_info &string_id<vpart_info>::obj() const
 {
     const auto found = vpart_info_all.find( *this );
     if( found == vpart_info_all.end() ) {
-        vpart_id base_id;
-        std::string variant;
-        std::tie( base_id, variant ) = get_vpart_id_variant( *this );
-        const auto var_found = vpart_info_all.find( base_id );
-        if( var_found == vpart_info_all.end() ) {
-            debugmsg( "Tried to get invalid vehicle part: %s", c_str() );
-            static const vpart_info null_part{};
-            return null_part;
-        }
-        return var_found->second;
+        debugmsg( "Tried to get invalid vehicle part: %s", c_str() );
+        static const vpart_info null_part{};
+        return null_part;
     }
     return found->second;
 }
@@ -365,16 +330,21 @@ void vpart_info::load( const JsonObject &jo, const std::string &src )
     std::string temp_id;
     std::string variant_id;
     if( jo.has_string( "abstract" ) ) {
-        def.id = vpart_id( jo.get_string( "abstract" ) );
-    } else {
-        temp_id = jo.get_string( "id" );
-        std::tie( def.id, variant_id ) = get_vpart_id_variant( temp_id );
-        if( !variant_id.empty() ) {
-            const auto base = vpart_info_all.find( def.id );
-            if( base != vpart_info_all.end() ) {
-                def = base->second;
-            }
+        const std::string abstract_str = jo.get_string( "abstract" );
+        if( abstract_str.find( '@' ) != std::string::npos ) {
+            // @ is used as variant separator in vehicle prototype definitions
+            jo.throw_error_at( "id", "vehicle_part 'abstract' can not contain @" );
         }
+        def.id = vpart_id( abstract_str );
+    } else if( jo.has_string( "id" ) ) {
+        const std::string id_str = jo.get_string( "id" );
+        if( id_str.find( '@' ) != std::string::npos ) {
+            // @ is used as variant separator in vehicle prototype definitions
+            jo.throw_error_at( "id", "vehicle_part 'id' can not contain @" );
+        }
+        def.id = vpart_id( id_str );
+    } else {
+        jo.throw_error( "vehicle part with no 'abstract' or 'id' field" );
     }
 
     assign( jo, "name", def.name_ );
@@ -1298,15 +1268,25 @@ void vehicles::reset_prototypes()
     vehicle_prototype_factory.reset();
 }
 
+static std::pair<std::string, std::string> get_vpart_str_variant( const std::string &vpid )
+{
+    const size_t loc = vpid.rfind( "@" );
+    return loc == std::string::npos
+           ? std::make_pair( vpid, "" )
+           : std::make_pair( vpid.substr( 0, loc ), vpid.substr( loc + 1 ) );
+}
+
 void vehicle_prototype::load( const JsonObject &jo, std::string_view )
 {
     vgroups[vgroup_id( id.str() )].add_vehicle( id, 100 );
     optional( jo, was_loaded, "name", name );
 
     const auto add_part_obj = [&]( const JsonObject & part, point pos ) {
+        const auto [id, variant] = get_vpart_str_variant( part.get_string( "part" ) );
         part_def pt;
+        pt.part = vpart_id( id );
+        pt.variant = variant;
         pt.pos = pos;
-        std::tie( pt.part, pt.variant ) = get_vpart_id_variant( part.get_string( "part" ) );
 
         assign( part, "ammo", pt.with_ammo, true, 0, 100 );
         assign( part, "ammo_types", pt.ammo_types, true );
@@ -1318,10 +1298,11 @@ void vehicle_prototype::load( const JsonObject &jo, std::string_view )
     };
 
     const auto add_part_string = [&]( const std::string & part, point pos ) {
+        const auto [id, variant] = get_vpart_str_variant( part );
         part_def pt;
+        pt.part = vpart_id( id );
+        pt.variant = variant;
         pt.pos = pos;
-        std::tie( pt.part, pt.variant ) = get_vpart_id_variant( part );
-
         parts.emplace_back( pt );
     };
 

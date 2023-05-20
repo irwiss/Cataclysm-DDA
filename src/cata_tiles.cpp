@@ -1957,18 +1957,14 @@ cata_tiles::find_tile_looks_like( const std::string &id, TILE_CATEGORY category,
         case TILE_CATEGORY::VEHICLE_PART: {
             std::optional<tile_lookup_res> ret;
             // vehicle parts start with vp_ for their tiles, but not their IDs
-            const vpart_id new_vpid( id.substr( 3 ) );
+            const vpart_id vpid( id.substr( 3 ) );
             // check the base id for a vehicle with variant parts
-            vpart_id base_vpid;
-            std::string variant_id;
-            std::tie( base_vpid, variant_id ) = get_vpart_id_variant( new_vpid );
-            if( base_vpid.is_valid() ) {
-                ret = find_tile_looks_like( "vp_" + base_vpid.str(), category, "",
-                                            looks_like_jumps_limit - 1 );
+            if( vpid.is_valid() ) {
+                ret = find_tile_looks_like( "vp_" + vpid.str(), category, "", looks_like_jumps_limit - 1 );
             }
             if( !ret.has_value() ) {
-                if( new_vpid.is_valid() ) {
-                    const vpart_info &new_vpi = new_vpid.obj();
+                if( vpid.is_valid() ) {
+                    const vpart_info &new_vpi = vpid.obj();
                     ret = find_tile_looks_like( "vp_" + new_vpi.looks_like, category, "",
                                                 looks_like_jumps_limit - 1 );
                     if( !ret.has_value() ) {
@@ -2160,28 +2156,18 @@ bool cata_tiles::draw_from_id_string_internal( const std::string &id, TILE_CATEG
                 col = mt.color;
             }
         } else if( category == TILE_CATEGORY::VEHICLE_PART ) {
-            const tileray ray = tileray( units::from_degrees( rota ) );
-            const std::pair<std::string,
-                  std::string> &vpid_data = get_vpart_str_variant( found_id.substr( 3 ) );
-            const vpart_id vpid( vpid_data.first );
+            const tileray ray( units::from_degrees( rota ) );
+            const vpart_id vpid( found_id.substr( 3 ) ); // slice off "vp_" prefix
             if( vpid.is_valid() ) {
                 vehicle_part vp( vpid, item( vpid->base_item ) );
                 vp.variant = variant;
-                const auto &[vsym, vcol] = vp.get_symbol_and_color( ray );
-
+                std::tie( sym, col ) = vp.get_symbol_and_color( ray );
                 if( subtile == open_ ) {
                     sym = '\'';
-                } else if( subtile == broken ) {
-                    sym = v.get_symbol_broken();
-                } else {
-                    sym = vsym;
                 }
                 subtile = -1;
-
                 sym = special_symbol( ray.dir_symbol( sym ) );
                 rota = 0;
-
-                col = vcol;
             }
         } else if( category == TILE_CATEGORY::FIELD ) {
             const field_type_id fid = field_type_id( found_id );
