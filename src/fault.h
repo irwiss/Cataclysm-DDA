@@ -4,7 +4,6 @@
 
 #include <iosfwd>
 #include <map>
-#include <new>
 #include <optional>
 #include <set>
 #include <string>
@@ -14,16 +13,33 @@
 #include "translations.h"
 #include "type_id.h"
 
+template <typename T> class generic_factory;
+
+class fault;
+class fault_fix;
 class JsonObject;
 struct requirement_data;
+
+namespace faults
+{
+void load_fault( const JsonObject &jo, const std::string &src );
+void load_fix( const JsonObject &jo, const std::string &src );
+
+// resets faults and fault fixes
+void reset();
+// finalizes faults and fault fixes
+void finalize();
+// checks faults and fault fixes
+void check();
+} // namespace faults
 
 class fault_fix
 {
     public:
-        fault_fix_id id_ = fault_fix_id::NULL_ID();
+        fault_fix_id id = fault_fix_id::NULL_ID();
         translation name;
+        time_duration time = 0_seconds;
         translation success_msg; // message to print on applying successfully
-        time_duration time;
         std::map<std::string, std::string> set_variables; // item vars applied to item
         std::map<skill_id, int> skills; // map of skill_id to required level
         std::set<fault_id> faults_removed; // which faults are removed on applying
@@ -33,40 +49,41 @@ class fault_fix
 
         const requirement_data &get_requirements() const;
 
-        static void load( const JsonObject &jo );
-        static const std::map<fault_fix_id, fault_fix> &all();
-        static void reset();
-        static void finalize();
-        static void check_consistency();
+        void finalize();
+
     private:
+        void load( const JsonObject &jo, std::string_view src );
+        void check() const;
+        bool was_loaded = false; // used by generic_factory
+        friend class generic_factory<fault_fix>;
         friend class fault;
-        shared_ptr_fast<requirement_data> requirements = make_shared_fast<requirement_data>();
+        shared_ptr_fast<requirement_data> requirements;
 };
 
 class fault
 {
     public:
-        const fault_id &id() const;
+        fault_id id = fault_id::NULL_ID();
         std::string name() const;
         std::string description() const;
         std::string item_prefix() const;
+        int get_mod_damage() const;
         bool has_flag( const std::string &flag ) const;
 
         const std::set<fault_fix_id> &get_fixes() const;
 
-        static const std::map<fault_id, fault> &all();
-        static void load( const JsonObject &jo );
-        static void reset();
-        static void check_consistency();
-
     private:
+        void load( const JsonObject &jo, std::string_view );
+        void check() const;
+        bool was_loaded = false; // used by generic_factory
+        friend class generic_factory<fault>;
         friend class fault_fix;
-        fault_id id_ = fault_id::NULL_ID();
         translation name_;
         translation description_;
         translation item_prefix_; // prefix added to affected item's name
         std::set<fault_fix_id> fixes;
         std::set<std::string> flags;
+        int mod_damage;
 };
 
 #endif // CATA_SRC_FAULT_H
