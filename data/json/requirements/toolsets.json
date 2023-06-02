@@ -24,6 +24,12 @@
     ]
   },
   {
+    "id": "repair_misc_standard",
+    "type": "requirement",
+    "//": "miscellaneous repair kit",
+    "tools": [ [ [ "misc_repairkit", 1 ] ] ]
+  },
+  {
     "id": "gun_cleaning",
     "type": "requirement",
     "//": "Gun cleaning",
@@ -138,6 +144,15 @@
         [ "propane_torch", 8 ]
       ]
     ],
+    "components": [ [ [ "welding_rod_steel", 1 ], [ "welding_wire_steel", 1 ], [ "brazing_rod_bronze", 1 ] ] ]
+  },
+  {
+    "id": "welding_high_grade",
+    "type": "requirement",
+    "//": "Crafting of high carbon steel items, measured in 1 cm segments - assume roughly 360 cm per hour, 10 seconds per # of this quality",
+    "//1": "Arc welding is about 85% efficient, acetylene welding is about 40% efficient, propane welding is about 10% efficient",
+    "qualities": [ { "id": "GLARE", "level": 1 } ],
+    "tools": [ [ [ "welding_kit", 20 ] ] ],
     "components": [ [ [ "welding_rod_steel", 1 ], [ "welding_wire_steel", 1 ], [ "brazing_rod_bronze", 1 ] ] ]
   },
   {
