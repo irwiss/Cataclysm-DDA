@@ -407,10 +407,10 @@ void Item_modifier::modify( item &new_item, const std::string &context ) const
         // if gun RNG is dirty, must add dirt fault to allow cleaning
         if( random_dirt > 0 ) {
             new_item.set_var( "dirt", random_dirt );
-            new_item.faults.emplace( "fault_gun_dirt" );
+            new_item.add_fault( STATIC( fault_id( "fault_gun_dirt" ) ) );
             // chance to be unlubed, but only if it's not a laser or something
         } else if( one_in( 10 ) && !new_item.has_flag( flag_NEEDS_NO_LUBE ) ) {
-            new_item.faults.emplace( "fault_gun_unlubricated" );
+            new_item.add_fault( STATIC( fault_id( "fault_gun_unlubricated" ) ) );
         }
     }
 

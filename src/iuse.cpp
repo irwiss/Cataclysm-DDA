@@ -2404,7 +2404,7 @@ std::optional<int> iuse::pack_cbm( Character *p, item *it, bool, const tripoint 
     if( !bionic ) {
         return std::nullopt;
     }
-    if( !bionic.get_item()->faults.empty() ) {
+    if( !bionic.get_item()->get_faults().empty() ) {
         if( p->query_yn( _( "This CBM is faulty.  You should mend it first.  Do you want to try?" ) ) ) {
             p->mend_item( std::move( bionic ) );
         }

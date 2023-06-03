@@ -2867,7 +2867,7 @@ void monster::spawn_dissectables_on_death( item *corpse )
                 dissectable.set_flag( flg );
             }
             for( const fault_id &flt : entry.faults ) {
-                dissectable.faults.emplace( flt );
+                dissectable.add_fault( flt );
             }
             if( corpse ) {
                 corpse->put_in( dissectable, item_pocket::pocket_type::CORPSE );

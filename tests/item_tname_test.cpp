@@ -463,7 +463,7 @@ TEST_CASE( "weapon_fouling", "[item][tname][fouling][dirt]" )
         }
 
         WHEN( "it is fouled" ) {
-            gun.faults.insert( fault_gun_dirt );
+            gun.add_fault( fault_gun_dirt );
             REQUIRE( gun.has_fault( fault_gun_dirt ) );
 
             // Max dirt is 10,000

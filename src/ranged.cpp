@@ -698,11 +698,11 @@ bool Character::handle_gun_damage( item &it )
     if( !it.has_flag( flag_PRIMITIVE_RANGED_WEAPON ) ) {
         if( it.ammo_data() != nullptr && ( ( it.ammo_data()->ammo->recoil < it.min_cycle_recoil() ) ||
                                            ( it.has_fault_flag( "BAD_CYCLING" ) && one_in( 16 ) ) ) &&
-            it.faults_potential().count( fault_gun_chamber_spent ) ) {
+            it.get_faults_potential().count( fault_gun_chamber_spent ) ) {
             add_msg_player_or_npc( m_bad, _( "Your %s fails to cycle!" ),
                                    _( "<npcname>'s %s fails to cycle!" ),
                                    it.tname() );
-            it.faults.insert( fault_gun_chamber_spent );
+            it.add_fault( fault_gun_chamber_spent );
             // Don't return false in this case; this shot happens, follow-up ones won't.
         }
         // These are the dirtying/fouling mechanics
@@ -723,11 +723,11 @@ bool Character::handle_gun_damage( item &it )
             dirt = it.get_var( "dirt", 0 );
             dirt_dbl = static_cast<double>( dirt );
             if( dirt > 0 && !it.has_fault_flag( "NO_DIRTYING" ) ) {
-                it.faults.insert( fault_gun_dirt );
+                it.add_fault( fault_gun_dirt );
             }
             if( dirt > 0 && curammo_effects.count( "BLACKPOWDER" ) ) {
-                it.faults.erase( fault_gun_dirt );
-                it.faults.insert( fault_gun_blackpowder );
+                it.remove_fault( fault_gun_dirt );
+                it.add_fault( fault_gun_blackpowder );
             }
             // end fouling mechanics
         }
@@ -833,7 +833,7 @@ int Character::fire_gun( const tripoint &target, int shots, item &gun )
     while( curshot != shots ) {
         if( gun.has_fault_flag( "JAMMED_GUN" ) && curshot == 0 ) {
             moves -= 50;
-            gun.faults.erase( fault_gun_chamber_spent );
+            gun.remove_fault( fault_gun_chamber_spent );
             add_msg_if_player( _( "You cycle your %s manually." ), gun.tname() );
         }
 

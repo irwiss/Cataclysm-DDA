@@ -3255,37 +3255,37 @@ void item::deserialize( const JsonObject &data )
     degradation_ = std::clamp( degradation_, 0, max_damage() );
 
     // 2023-03-26 remove in 0.H, accurizing is obsolete
-    faults.erase( STATIC( fault_id( "fault_gun_unaccurized" ) ) );
-    faults.erase( STATIC( fault_id( "fault_gun_damaged" ) ) );
+    remove_fault( STATIC( fault_id( "fault_gun_unaccurized" ) ) );
+    remove_fault( STATIC( fault_id( "fault_gun_damaged" ) ) );
 
     // 2023-06-02 remove in 0.H add faults corresponding to damage
     if( type->damage_max() > 0 && !is_corpse() ) { // excludes
         int damage_to_reapply = damage();
-        for( const fault_id &fid : faults ) {
+        for( const fault_id &fid : get_faults() ) {
             damage_to_reapply -= fid->get_mod_damage();
         }
         if( damage_to_reapply > 0 ) {
             // faults don't cover existing damage, clear the damage faults,
             // and replay mod_damage so new ones are rerolled
             const std::string pre = string_format( "%s[%s]", display_name(),
-            enumerate_as_string( faults, []( const fault_id & fid ) {
+            enumerate_as_string( get_faults(), []( const fault_id & fid ) {
                 return fid.str();
             } ) );
 
             std::vector<fault_id> faults_to_erase;
-            for( const fault_id &fid : faults ) {
+            for( const fault_id &fid : get_faults() ) {
                 if( !fid->material_damage().is_null() ) {
                     faults_to_erase.emplace_back( fid );
                 }
             }
             for( const fault_id &fid : faults_to_erase ) {
-                faults.erase( fid );
+                remove_fault( fid );
             }
 
             mod_damage( -damage_to_reapply, /* apply_degradation = */ false );
             mod_damage( +damage_to_reapply, /* apply_degradation = */ false );
             debugmsg( "%s reapplied %d damage -> %s[%s]", pre, damage_to_reapply, display_name(),
-            enumerate_as_string( faults, []( const fault_id & fid ) {
+            enumerate_as_string( get_faults(), []( const fault_id & fid ) {
                 return fid.str();
             } ) );
         }

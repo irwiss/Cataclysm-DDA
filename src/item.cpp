@@ -1407,7 +1407,7 @@ bool item::stacks_with( const item &rhs, bool check_components, bool combine_liq
         return false;
     }
     // Items with different faults do not stack (such as new vs. used guns)
-    if( faults != rhs.faults ) {
+    if( get_faults() != rhs.get_faults() ) {
         return false;
     }
     if( techniques != rhs.techniques ) {
@@ -5559,7 +5559,7 @@ void item::final_info( std::vector<iteminfo> &info, const iteminfo_query *parts,
     }
 
     if( parts->test( iteminfo_parts::DESCRIPTION_FAULTS ) ) {
-        for( const fault_id &e : faults ) {
+        for( const fault_id &e : get_faults() ) {
             //~ %1$s is the name of a fault and %2$s is the description of the fault
             info.emplace_back( "DESCRIPTION", string_format( _( "* <bad>%1$s</bad>.  %2$s" ),
                                e.obj().name(), e.obj().description() ) );
@@ -6367,7 +6367,7 @@ std::string item::tname( unsigned int quantity, bool with_prefix, unsigned int t
     std::string damtext;
 
     // add first prefix if item has a fault that defines a prefix (prioritize?)
-    for( const fault_id &f : faults ) {
+    for( const fault_id &f : get_faults() ) {
         const std::string prefix = f->item_prefix();
         if( !prefix.empty() ) {
             damtext = prefix + " ";
@@ -7356,19 +7356,39 @@ void item::unset_flags()
     requires_tags_processing = true;
 }
 
-bool item::has_fault( const fault_id &fault ) const
+const std::set<fault_id> &item::get_faults() const
 {
-    return faults.count( fault );
+    return faults;
 }
 
-bool item::has_fault_flag( const std::string &searched_flag ) const
+bool item::has_fault( const fault_id &fid ) const
+{
+    return faults.count( fid );
+}
+
+void item::add_fault( const fault_id &fid )
+{
+    faults.emplace( fid );
+}
+
+void item::remove_fault( const fault_id &fid )
+{
+    faults.erase( fid );
+}
+
+bool item::has_fault_flag( const std::string &flag ) const
 {
     for( const fault_id &fault : faults ) {
-        if( fault->has_flag( searched_flag ) ) {
+        if( fault->has_flag( flag ) ) {
             return true;
         }
     }
     return false;
+}
+
+const std::set<fault_id> &item::get_faults_potential() const
+{
+    return type->faults;
 }
 
 bool item::has_own_flag( const flag_id &f ) const
@@ -8663,7 +8683,7 @@ bool item::mod_damage( int qty, bool apply_degradation )
     while( damage_to_apply > 0 && !potential_faults.empty() ) {
         const fault f = *random_entry( potential_faults );
         const int fault_damage = f.get_mod_damage();
-        faults.emplace( f.id );
+        add_fault( f.id );
         set_damage( damage_ + fault_damage );
         potential_faults.erase( f.id );
         damage_to_apply -= fault_damage;
@@ -9484,13 +9504,6 @@ int item::wind_resist() const
     }
 
     return best;
-}
-
-std::set<fault_id> item::faults_potential() const
-{
-    std::set<fault_id> res;
-    res.insert( type->faults.begin(), type->faults.end() );
-    return res;
 }
 
 int item::wheel_area() const

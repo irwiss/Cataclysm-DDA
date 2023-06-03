@@ -834,7 +834,7 @@ static std::vector<item> create_charge_items( const itype *drop, int count,
             obj.set_flag( flg );
         }
         for( const fault_id &flt : entry.faults ) {
-            obj.faults.emplace( flt );
+            obj.add_fault( flt );
         }
         if( !you.backlog.empty() && you.backlog.front().id() == ACT_MULTIPLE_BUTCHER ) {
             obj.set_var( "activity_var", you.name );
@@ -1064,7 +1064,7 @@ static bool butchery_drops_harvest( item *corpse_item, const mtype &mt, Characte
                     obj.set_flag( flg );
                 }
                 for( const fault_id &flt : entry.faults ) {
-                    obj.faults.emplace( flt );
+                    obj.add_fault( flt );
                 }
 
                 // TODO: smarter NPC liquid handling
@@ -1092,7 +1092,7 @@ static bool butchery_drops_harvest( item *corpse_item, const mtype &mt, Characte
                     obj.set_flag( flg );
                 }
                 for( const fault_id &flt : entry.faults ) {
-                    obj.faults.emplace( flt );
+                    obj.add_fault( flt );
                 }
                 if( !you.backlog.empty() && you.backlog.front().id() == ACT_MULTIPLE_BUTCHER ) {
                     obj.set_var( "activity_var", you.name );
@@ -2536,9 +2536,9 @@ void activity_handlers::mend_item_finish( player_activity *act, Character *you )
         return;
     }
     item &target = *act->targets[0];
-    const fault_id fault_id( act->name );
-    if( target.faults.count( fault_id ) == 0 ) {
-        debugmsg( "item %s does not have fault %s", target.tname(), fault_id.str() );
+    const fault_id fid( act->name );
+    if( target.has_fault( fid ) == 0 ) {
+        debugmsg( "item %s does not have fault %s", target.tname(), fid.str() );
         return;
     }
     if( act->str_values.empty() ) {
@@ -2565,11 +2565,11 @@ void activity_handlers::mend_item_finish( player_activity *act, Character *you )
     }
     you->invalidate_crafting_inventory();
 
-    for( const ::fault_id &id : fix.faults_removed ) {
-        target.faults.erase( id );
+    for( const fault_id &fault_removed : fix.faults_removed ) {
+        target.remove_fault( fault_removed );
     }
-    for( const ::fault_id &id : fix.faults_added ) {
-        target.faults.insert( id );
+    for( const fault_id &fault_added : fix.faults_added ) {
+        target.add_fault( fault_added );
     }
     for( const auto &[var_name, var_value] : fix.set_variables ) {
         target.set_var( var_name, var_value );

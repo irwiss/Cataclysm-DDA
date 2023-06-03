@@ -6234,11 +6234,11 @@ void Character::mend_item( item_location &&obj, bool interactive )
         uilist menu;
         menu.text = _( "Toggle which fault?" );
         std::vector<std::pair<fault_id, bool>> opts;
-        for( const auto &f : obj->faults_potential() ) {
-            opts.emplace_back( f, !!obj->faults.count( f ) );
-            menu.addentry( -1, true, -1, string_format(
-                               opts.back().second ? pgettext( "fault", "Mend: %s" ) : pgettext( "fault", "Set: %s" ),
-                               f.obj().name() ) );
+        for( const fault_id &f : obj->get_faults_potential() ) {
+            opts.emplace_back( f, obj->has_fault( f ) );
+            menu.addentry( -1, true, -1, string_format( opts.back().second
+                           ? pgettext( "fault", "Mend: %s" )
+                           : pgettext( "fault", "Set: %s" ), f.obj().name() ) );
         }
         if( opts.empty() ) {
             add_msg( m_info, _( "The %s doesn't have any faults to toggle." ), obj->tname() );
@@ -6247,9 +6247,9 @@ void Character::mend_item( item_location &&obj, bool interactive )
         menu.query();
         if( menu.ret >= 0 ) {
             if( opts[menu.ret].second ) {
-                obj->faults.erase( opts[menu.ret].first );
+                obj->remove_fault( opts[menu.ret].first );
             } else {
-                obj->faults.insert( opts[menu.ret].first );
+                obj->add_fault( opts[menu.ret].first );
             }
         }
         return;
@@ -6264,7 +6264,7 @@ void Character::mend_item( item_location &&obj, bool interactive )
     };
 
     std::vector<mending_option> mending_options;
-    for( const fault_id &f : obj->faults ) {
+    for( const fault_id &f : obj->get_faults() ) {
         for( const fault_fix_id &fix_id : f->get_fixes() ) {
             const fault_fix &fix = *fix_id;
             mending_option opt{ f, fix, true };
@@ -9562,7 +9562,7 @@ void Character::place_corpse()
             cbm.set_flag( flag_FILTHY );
             cbm.set_flag( flag_NO_STERILE );
             cbm.set_flag( flag_NO_PACKED );
-            cbm.faults.emplace( fault_bionic_salvaged );
+            cbm.add_fault( fault_bionic_salvaged );
             body.put_in( cbm, item_pocket::pocket_type::CORPSE );
         }
     }

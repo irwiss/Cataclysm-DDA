@@ -1862,10 +1862,10 @@ static hint_rating rate_action_expand( const item &it )
 static hint_rating rate_action_mend( const avatar &, const item &it )
 {
     // TODO: check also if item damage could be repaired via a tool
-    if( !it.faults.empty() ) {
+    if( !it.get_faults().empty() ) {
         return hint_rating::good;
     }
-    return it.faults_potential().empty() ? hint_rating::cant : hint_rating::iffy;
+    return it.get_faults_potential().empty() ? hint_rating::cant : hint_rating::iffy;
 }
 
 static hint_rating rate_action_read( const avatar &you, const item &it )

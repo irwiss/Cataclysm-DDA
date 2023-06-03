@@ -1561,9 +1561,6 @@ class item : public visitable
         /** How resistant clothes made of this material are to wind (0-100) */
         int wind_resist() const;
 
-        /** What faults can potentially occur with this item? */
-        std::set<fault_id> faults_potential() const;
-
         /** Returns the total area of this wheel or 0 if it isn't one. */
         int wheel_area() const;
 
@@ -1861,12 +1858,6 @@ class item : public visitable
         /** Removes all item specific flags. */
         void unset_flags();
         /*@}*/
-
-        /**Does this item have the specified fault*/
-        bool has_fault( const fault_id &fault ) const;
-
-        /** Does this item part have a fault with this flag */
-        bool has_fault_flag( const std::string &searched_flag ) const;
 
         /**
          * @name Item properties
@@ -2918,8 +2909,29 @@ class item : public visitable
 
         const itype *type;
         item_components components;
-        /** What faults (if any) currently apply to this item */
+
+    private:
+        // stores fault ids on this item
         std::set<fault_id> faults;
+
+    public:
+        // @returns faults currently applied to this item
+        const std::set<fault_id> &get_faults() const;
+
+        // @returns faults that may be applied to this item type
+        const std::set<fault_id> &get_faults_potential() const;
+
+        // adds fault with id \p fid
+        void add_fault( const fault_id &fid );
+
+        // removes fault with id \p fid
+        void remove_fault( const fault_id &fid );
+
+        // @returns true if item has a fault with id \p fid
+        bool has_fault( const fault_id &fid ) const;
+
+        // @returns true if item has a fault with flag \p flag
+        bool has_fault_flag( const std::string &flag ) const;
 
     private:
         item_contents contents;
