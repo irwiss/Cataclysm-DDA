@@ -356,14 +356,8 @@ struct vehicle_part {
          */
         bool fill_with( item &liquid, int qty = INT_MAX );
 
-        /** Current faults affecting this part (if any) */
-        const std::set<fault_id> &faults() const;
-
         /** Does this vehicle part have a fault with this flag */
         bool has_fault_flag( const std::string &searched_flag ) const;
-
-        /** Faults which could potentially occur with this part (if any) */
-        std::set<fault_id> faults_potential() const;
 
         /** Try to set fault returning false if specified fault cannot occur with this item */
         bool fault_set( const fault_id &f );

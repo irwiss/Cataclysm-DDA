@@ -34,7 +34,7 @@ void finalize();
 void check();
 
 // @returns faults that can be applied to item \p it
-std::set<fault_id> faults_for_item( const item &it );
+std::vector<fault_id> faults_for_item( const item &it );
 } // namespace faults
 
 class fault_fix
@@ -68,6 +68,9 @@ class fault
 {
     public:
         fault_id id = fault_id::NULL_ID();
+        // if true the fault can be applied multiple times
+        bool stackable = false;
+
         std::string name() const;
         std::string description() const;
         std::string item_prefix() const;

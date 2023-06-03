@@ -5559,10 +5559,10 @@ void item::final_info( std::vector<iteminfo> &info, const iteminfo_query *parts,
     }
 
     if( parts->test( iteminfo_parts::DESCRIPTION_FAULTS ) ) {
-        for( const fault_id &e : get_faults() ) {
-            //~ %1$s is the name of a fault and %2$s is the description of the fault
-            info.emplace_back( "DESCRIPTION", string_format( _( "* <bad>%1$s</bad>.  %2$s" ),
-                               e.obj().name(), e.obj().description() ) );
+        for( const auto &[fid, fault_count] : get_faults() ) {
+            //~ %1$d amount of faults of this type, %2$s is the name of a fault, %3$s is the description of the fault
+            info.emplace_back( "DESCRIPTION", string_format( _( "* %1$dx <bad>%2$s</bad>.  %3$s" ),
+                               fault_count, fid->name(), fid->description() ) );
         }
     }
 
@@ -6367,8 +6367,8 @@ std::string item::tname( unsigned int quantity, bool with_prefix, unsigned int t
     std::string damtext;
 
     // add first prefix if item has a fault that defines a prefix (prioritize?)
-    for( const fault_id &f : get_faults() ) {
-        const std::string prefix = f->item_prefix();
+    for( const auto &[fid, fault_count] : get_faults() ) {
+        const std::string prefix = fid->item_prefix();
         if( !prefix.empty() ) {
             damtext = prefix + " ";
             break;
@@ -7356,7 +7356,7 @@ void item::unset_flags()
     requires_tags_processing = true;
 }
 
-const std::set<fault_id> &item::get_faults() const
+const std::map<fault_id, int> &item::get_faults() const
 {
     return faults;
 }
@@ -7368,18 +7368,25 @@ bool item::has_fault( const fault_id &fid ) const
 
 void item::add_fault( const fault_id &fid )
 {
-    faults.emplace( fid );
+    if( fid->stackable || !has_fault( fid ) ) {
+        faults[fid]++;
+    }
+    // debugmsg here could perhaps detect edgecases but some stuff in
+    // item groups appears to be adding multiple fouling faults
 }
 
 void item::remove_fault( const fault_id &fid )
 {
-    faults.erase( fid );
+    faults[fid]--;
+    if( faults[fid] <= 0 ) {
+        faults.erase( fid );
+    }
 }
 
 bool item::has_fault_flag( const std::string &flag ) const
 {
-    for( const fault_id &fault : faults ) {
-        if( fault->has_flag( flag ) ) {
+    for( const auto&[fid, fault_count] : faults ) {
+        if( fid->has_flag( flag ) ) {
             return true;
         }
     }
@@ -8679,18 +8686,29 @@ bool item::mod_damage( int qty, bool apply_degradation )
     int damage_to_apply = qty;
     const bool destroy = ( damage_ + qty ) > max_damage();
 
-    std::set<fault_id> potential_faults = faults::faults_for_item( *this );
+    const std::vector<fault_id> potential_faults = faults::faults_for_item( *this );
     while( damage_to_apply > 0 && !potential_faults.empty() ) {
-        const fault f = *random_entry( potential_faults );
-        const int fault_damage = f.get_mod_damage();
-        add_fault( f.id );
+        // find a fault with highest mod_damage but lower than damage_to_apply
+        fault_id fault_to_apply = fault_id::NULL_ID();
+        for( const fault_id &fid : potential_faults ) {
+            const int fault_damage = fid->get_mod_damage();
+            if( fault_damage > damage_to_apply ) {
+                continue;
+            }
+            fault_to_apply = fid;
+        }
+        if( fault_to_apply.is_null() ) {
+            fault_to_apply = *potential_faults.begin();
+        }
+        const int fault_damage = fault_to_apply->get_mod_damage();
+        add_fault( fault_to_apply );
         set_damage( damage_ + fault_damage );
-        potential_faults.erase( f.id );
         damage_to_apply -= fault_damage;
     }
     if( damage_to_apply > 0 ) {
-        debugmsg( "not enough faults to reach %d damage for %s; adding %d pure damage",
-                  damage_ + damage_to_apply, display_name(), damage_to_apply );
+        // no faults to cover the remainder; we'll ignore this damage unless it's over 1000
+        debugmsg( "no faults for %s to reach %d damage; adding %d pure damage",
+                  display_name(), damage_ + damage_to_apply, damage_to_apply );
         set_damage( damage_ + damage_to_apply );
     }
 

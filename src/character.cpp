@@ -6264,10 +6264,10 @@ void Character::mend_item( item_location &&obj, bool interactive )
     };
 
     std::vector<mending_option> mending_options;
-    for( const fault_id &f : obj->get_faults() ) {
-        for( const fault_fix_id &fix_id : f->get_fixes() ) {
+    for( const auto &[fid, fault_count] : obj->get_faults() ) {
+        for( const fault_fix_id &fix_id : fid->get_fixes() ) {
             const fault_fix &fix = *fix_id;
-            mending_option opt{ f, fix, true };
+            mending_option opt{ fid, fix, true };
             for( const auto &[skill_id, level] : fix.skills ) {
                 if( get_skill_level( skill_id ) < level ) {
                     opt.doable = false;
@@ -6329,9 +6329,9 @@ void Character::mend_item( item_location &&obj, bool interactive )
             for( const fault_id &fid : fix.faults_added ) {
                 descr += string_format( _( "Adds fault: <color_yellow>%s</color>\n" ), fid->name() );
             }
-            if( fix.mod_damage > 0 ) {
+            if( fix.mod_damage < 0 ) {
                 descr += string_format( _( "<color_green>Repairs</color> %d damage.\n" ), fix.mod_damage );
-            } else if( fix.mod_damage < 0 ) {
+            } else if( fix.mod_damage > 0 ) {
                 descr += string_format( _( "<color_red>Applies</color> %d damage.\n" ), -fix.mod_damage );
             }
             descr += string_format( _( "Time required: <color_cyan>%s</color>\n" ),

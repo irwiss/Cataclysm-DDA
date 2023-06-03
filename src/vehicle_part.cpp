@@ -142,8 +142,8 @@ std::string vehicle_part::name( bool with_prefix ) const
     if( base.has_var( "contained_name" ) ) {
         res += string_format( _( " holding %s" ), base.get_var( "contained_name" ) );
     }
-    for( const fault_id &f : base.get_faults() ) {
-        const std::string prefix = f->item_prefix();
+    for( const auto &[fid, fault_count] : base.get_faults() ) {
+        const std::string prefix = fid->item_prefix();
         if( !prefix.empty() ) {
             res += " (" + prefix + ")";
             break;
@@ -480,24 +480,14 @@ bool vehicle_part::fill_with( item &liquid, int qty )
     return true;
 }
 
-const std::set<fault_id> &vehicle_part::faults() const
-{
-    return base.get_faults();
-}
-
 bool vehicle_part::has_fault_flag( const std::string &searched_flag ) const
 {
     return base.has_fault_flag( searched_flag );
 }
 
-std::set<fault_id> vehicle_part::faults_potential() const
-{
-    return base.get_faults_potential();
-}
-
 bool vehicle_part::fault_set( const fault_id &f )
 {
-    if( !faults_potential().count( f ) ) {
+    if( !base.get_faults_potential().count( f ) ) {
         return false;
     }
     base.add_fault( f );

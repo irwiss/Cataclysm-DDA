@@ -441,7 +441,7 @@ static void clear_faults( item &it )
         it.set_var( "dirt", 0 );
     }
     while( !it.get_faults().empty() ) {
-        it.remove_fault( *it.get_faults().begin() );
+        it.remove_fault( it.get_faults().begin()->first );
     }
 }
 

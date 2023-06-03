@@ -460,11 +460,11 @@ void vehicle::init_state( map &placed_on, int init_veh_fuel, int init_veh_status
 
             if( vp.has_feature( VPFLAG_ENGINE ) ) {
                 // If possible set an engine fault rather than destroying the engine outright
-                if( destroyEngine && pt.faults_potential().empty() ) {
+                if( destroyEngine && pt.base.get_faults_potential().empty() ) {
                     set_hp( pt, 0, false );
                 } else if( destroyEngine ) {
                     do {
-                        pt.fault_set( random_entry( pt.faults_potential() ) );
+                        pt.fault_set( random_entry( pt.base.get_faults_potential() ) );
                     } while( one_in( 3 ) );
                 }
 

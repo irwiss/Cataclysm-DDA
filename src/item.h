@@ -2912,25 +2912,26 @@ class item : public visitable
 
     private:
         // stores fault ids on this item
-        std::set<fault_id> faults;
+        std::map<fault_id, int> faults;
 
     public:
         // @returns faults currently applied to this item
-        const std::set<fault_id> &get_faults() const;
+        // if fault is stackable the map value is the amount of faults
+        const std::map<fault_id, int> &get_faults() const;
 
         // @returns faults that may be applied to this item type
         const std::set<fault_id> &get_faults_potential() const;
 
-        // adds fault with id \p fid
+        // increases amount of fault \p fid by 1 or adds if it does not exist
         void add_fault( const fault_id &fid );
 
-        // removes fault with id \p fid
+        // decreases amount of fault \p fid by 1 or removes it if 0 remaining
         void remove_fault( const fault_id &fid );
 
-        // @returns true if item has a fault with id \p fid
+        // @returns true if item has any faults with id \p fid
         bool has_fault( const fault_id &fid ) const;
 
-        // @returns true if item has a fault with flag \p flag
+        // @returns true if item has any faults with flag \p flag
         bool has_fault_flag( const std::string &flag ) const;
 
     private:

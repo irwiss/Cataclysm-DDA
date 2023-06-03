@@ -660,9 +660,9 @@ task_reason veh_interact::cant_do( char mode )
             const bool toggling = player_character.has_trait( trait_DEBUG_HS );
             valid_target = std::any_of( vpr.begin(), vpr.end(), [toggling]( const vpart_reference & pt ) {
                 if( toggling ) {
-                    return pt.part().is_available() && !pt.part().faults_potential().empty();
+                    return pt.part().is_available() && !pt.part().get_base().get_faults_potential().empty();
                 } else {
-                    return pt.part().is_available() && !pt.part().faults().empty();
+                    return pt.part().is_available() && !pt.part().get_base().get_faults().empty();
                 }
             } );
             enough_light = player_character.fine_detail_vision_mod() <= 4;
@@ -1280,9 +1280,9 @@ void veh_interact::do_mend()
     const bool toggling = player_character.has_trait( trait_DEBUG_HS );
     auto sel = [toggling]( const vehicle_part & pt ) {
         if( toggling ) {
-            return !pt.faults_potential().empty();
+            return !pt.get_base().get_faults_potential().empty();
         } else {
-            return !pt.faults().empty();
+            return !pt.get_base().get_faults().empty();
         }
     };
 
@@ -1428,9 +1428,10 @@ void veh_interact::calc_overview()
             // display engine faults (if any)
             auto msg_cb = [&]( const vehicle_part & pt ) {
                 msg = std::string();
-                for( const auto &e : pt.faults() ) {
-                    msg = msg.value() + string_format( "%s\n  %s\n\n", colorize( e->name(), c_red ),
-                                                       colorize( e->description(), c_light_gray ) );
+                for( const auto &[fid, fault_count] : pt.get_base().get_faults() ) {
+                    msg = msg.value() + string_format( "%s\n  %s\n\n",
+                                                       colorize( fid->name(), c_red ),
+                                                       colorize( fid->description(), c_light_gray ) );
                 }
             };
             selectable = is_selectable( vpr.part() );

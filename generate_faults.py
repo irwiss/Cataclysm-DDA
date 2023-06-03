@@ -7,7 +7,13 @@ from subprocess import PIPE, run
 
 
 def format_json(json_in):
-    p = run(['tools\\format\\json_formatter.exe'], input=json_in, stdout=PIPE, stderr=PIPE, text=True, encoding='utf-8')
+    formatter = None
+    if os.name == "nt":
+        formatter = "tools\\format\\json_formatter.exe"
+    else:
+        formatter = "tools/format/json_formatter.cgi"
+    p = run([formatter], input=json_in, stdout=PIPE, stderr=PIPE,
+            text=True, encoding='utf-8')
     return p.stdout
 
 
@@ -110,6 +116,13 @@ special_materials = {
 # non-special: alien_liquid
 
 
+def find_mat_by_id(mod_data, id):
+    for jo in mod_data:
+        if jo["id"] == id:
+            return jo
+    exit(1)
+
+
 def process_tools(faults_path, reqs_path, fixes_path, base_data, mod_data):
     new_faults = []
     new_reqs = []
@@ -127,7 +140,8 @@ def process_tools(faults_path, reqs_path, fixes_path, base_data, mod_data):
             "type": "fault",
             "id": f"damaged_{mat_id}",
             "name": {"str": f"Damaged {mat_name}"},
-            "description": f"This item's {mat_name} parts are damaged.",
+            "description": f"Damaged {mat_name} parts.",
+            "stackable": True,
             "material_damage": mat_id,
             "mod_damage": 1000
         }
@@ -149,7 +163,6 @@ def process_tools(faults_path, reqs_path, fixes_path, base_data, mod_data):
         ammo_count = jo.get("charges_per_use", 1)
         for u in jo["use_action"]:
             tool_skill = u.get("skill", "fabrication")
-            tool_skill_level = max(1, 5 - u.get("tool_quality", 0))
 
             for mat_id in u["materials"]:
                 if mat_id not in fault_for_mat:
@@ -158,6 +171,13 @@ def process_tools(faults_path, reqs_path, fixes_path, base_data, mod_data):
                 if mat_id not in fault_for_mat_in_mod:
                     # material isn't based in this mod - skip it
                     continue
+
+                matdef = find_mat_by_id(mod_data, mat_id)
+                matdifficult = matdef.get("repair_difficulty", 10)
+                # tool qualities are too all over the place to include
+                #tool_qual = u.get("tool_quality", 0)
+                #tool_skill_level = max(1, matdifficult - tool_qual)
+                tool_skill_level = max(1, matdifficult)
 
                 special_case = None
                 for k, v in special_materials.items():

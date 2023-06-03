@@ -46,16 +46,19 @@ void faults::finalize()
     reqs_temp_storage.clear();
 }
 
-std::set<fault_id> faults::faults_for_item( const item &it )
+std::vector<fault_id> faults::faults_for_item( const item &it )
 {
-    std::set<fault_id> ret;
+    std::vector<fault_id> ret;
     for( const fault &f : fault_factory.get_all() ) {
         for( const material_type *mt : it.made_of_types() ) {
             if( !it.has_fault( f.id ) && mt->id == f.material_damage() ) {
-                ret.emplace( f.id );
+                ret.emplace_back( f.id );
             }
         }
     }
+    std::sort( ret.begin(), ret.end(), []( const fault_id & lhs, const fault_id & rhs ) {
+        return lhs->get_mod_damage() > rhs->get_mod_damage();
+    } );
     return ret;
 }
 
@@ -134,6 +137,7 @@ void fault::load( const JsonObject &jo, std::string_view )
     mandatory( jo, was_loaded, "description", description_ );
     optional( jo, was_loaded, "item_prefix", item_prefix_ );
     optional( jo, was_loaded, "flags", flags );
+    optional( jo, was_loaded, "stackable", stackable );
     optional( jo, was_loaded, "mod_damage", mod_damage );
     optional( jo, was_loaded, "material_damage", material_damage_, material_id::NULL_ID() );
 }

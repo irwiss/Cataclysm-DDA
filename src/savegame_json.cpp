@@ -3261,21 +3261,23 @@ void item::deserialize( const JsonObject &data )
     // 2023-06-02 remove in 0.H add faults corresponding to damage
     if( type->damage_max() > 0 && !is_corpse() ) { // excludes
         int damage_to_reapply = damage();
-        for( const fault_id &fid : get_faults() ) {
-            damage_to_reapply -= fid->get_mod_damage();
+        for( const auto &[fid, fault_count] : get_faults() ) {
+            damage_to_reapply -= fault_count * fid->get_mod_damage();
         }
         if( damage_to_reapply > 0 ) {
             // faults don't cover existing damage, clear the damage faults,
             // and replay mod_damage so new ones are rerolled
             const std::string pre = string_format( "%s[%s]", display_name(),
-            enumerate_as_string( get_faults(), []( const fault_id & fid ) {
-                return fid.str();
+            enumerate_as_string( get_faults(), []( const auto & f ) {
+                return std::to_string( f.second ) + "x " + f.first.str();
             } ) );
 
             std::vector<fault_id> faults_to_erase;
-            for( const fault_id &fid : get_faults() ) {
+            for( const auto &[fid, fault_count] : get_faults() ) {
                 if( !fid->material_damage().is_null() ) {
-                    faults_to_erase.emplace_back( fid );
+                    for( int i = 0; i < fault_count; i++ ) {
+                        faults_to_erase.emplace_back( fid );
+                    }
                 }
             }
             for( const fault_id &fid : faults_to_erase ) {
@@ -3285,8 +3287,8 @@ void item::deserialize( const JsonObject &data )
             mod_damage( -damage_to_reapply, /* apply_degradation = */ false );
             mod_damage( +damage_to_reapply, /* apply_degradation = */ false );
             debugmsg( "%s reapplied %d damage -> %s[%s]", pre, damage_to_reapply, display_name(),
-            enumerate_as_string( get_faults(), []( const fault_id & fid ) {
-                return fid.str();
+            enumerate_as_string( get_faults(), []( const auto & f ) {
+                return std::to_string( f.second ) + "x " + f.first.str();
             } ) );
         }
     }
