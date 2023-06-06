@@ -23,7 +23,18 @@ function run_test
     prefix=$2
     shift 2
 
-    $WINE "$test_bin" ${cata_test_opts} "$@" 2>&1 | sed -E 's/^(::(warning|error|debug)[^:]*::)?/\1'"$prefix"'/' || test_exit_code="${PIPESTATUS[0]}" sed_exit_code="${PIPESTATUS[1]}"
+    result=$( $WINE "$test_bin" ${cata_test_opts} "$@" 2>&1 )
+    test_exit_code=$?
+
+    if [ "$3" -eq "(all_mods)=> " ] && [ "$test_exit_code" -eq "0" ]
+    then
+        # all mods only has relevant results when it errors out
+        # so we don't need to print out the output
+        echo "$3 mods loaded successfully"
+        return 0
+    fi
+
+    echo $result | sed -E 's/^(::(warning|error|debug)[^:]*::)?/\1'"$prefix"'/' || sed_exit_code="${PIPESTATUS[1]}"
     if [ "$test_exit_code" -ne "0" ]
     then
         echo "$3test exited with code $test_exit_code"
