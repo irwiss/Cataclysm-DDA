@@ -384,7 +384,7 @@ int main( int argc, const char *argv[] )
 
     bool error_during_initialization = debug_has_error_been_observed();
 
-    DebugLog( D_INFO, DC_ALL ) << "Game data loaded, running Catch2 session...";
+    DebugLog( D_INFO, DC_ALL ) << "Game data loaded, running Catch2 session:";
     DebugLog( D_INFO, DC_ALL ) << std::endl; // DebugLog doesn't end with trailing \n
     const std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
     result = session.run();
@@ -394,7 +394,12 @@ int main( int argc, const char *argv[] )
     if( result == 0 || dont_save ) {
         world_generator->delete_world( world_name, true );
     } else {
-        DebugLog( D_INFO, DC_ALL ) << "Test world " << world_name << " left for inspection.";
+        if( g->save() ) {
+            DebugLog( D_INFO, DC_ALL ) << "Test world " << world_name << " left for inspection.";
+        } else {
+            DebugLog( D_ERROR, DC_ALL ) << "Test world " << world_name << " failed to save.";
+            result = 1;
+        }
     }
 
     std::chrono::duration<double> elapsed_seconds = end - start;
