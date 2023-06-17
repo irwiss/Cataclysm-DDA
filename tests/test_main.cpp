@@ -263,12 +263,12 @@ struct CataListener : Catch::TestEventListenerBase {
                 } else {
                     stream << "Log messages during successful test:\n";
                 }
+                for( const std::pair<std::string, std::string> &message : messages ) {
+                    stream << message.first << ": " << message.second << '\n';
+                }
             }
-            for( const std::pair<std::string, std::string> &message : messages ) {
-                stream << message.first << ": " << message.second << '\n';
-            }
-            Messages::clear_messages();
         }
+        Messages::clear_messages();
     }
 
     bool assertionEnded( Catch::AssertionStats const &assertionStats ) override {
@@ -289,6 +289,89 @@ struct CataListener : Catch::TestEventListenerBase {
 
 CATCH_REGISTER_LISTENER( CataListener )
 
+static int run_session_from_pool_directory( Catch::Session &session, const fs::path &pool_dir )
+{
+    try {
+        const std::shared_ptr<Catch::Config> config = std::make_shared<Catch::Config>
+                ( session.configData() );
+        Catch::seedRng( *config );
+        Catch::Totals totals;
+        Catch::RunContext m_context( config, Catch::makeReporter( config ) );
+
+        write_to_file( PATH_INFO::user_dir_path() / "tests_rng_seed.txt",
+        [&config]( std::ostream & os ) {
+            os << std::to_string( config->rngSeed() );
+        } );
+        const std::string lock_suffix = ".in_progress";
+        std::vector<fs::path> cases_queued; // filenames of queued cases
+        std::vector<std::string> cases_executed; // filenames of executed+in progress cases
+        for( const fs::directory_entry &entry : fs::directory_iterator( pool_dir ) ) {
+            if( string_ends_with( entry.path().string(), lock_suffix ) ) {
+                continue;
+            }
+            cases_queued.emplace_back( entry.path() );
+        }
+        std::sort( cases_queued.begin(), cases_queued.end(),
+        []( const fs::path & lhs, const fs::path & rhs ) {
+            // NOLINTNEXTLINE(cata-use-localized-sorting)
+            return lhs.string() > rhs.string();
+        } );
+        const cata_path test_execution_order_path = PATH_INFO::user_dir_path() / "tests_executed_order.txt";
+        DebugLog( D_INFO, DC_ALL ) << "--tests-pool-dir feeding from " << pool_dir.string() << std::endl;
+        std::map<std::string, Catch::TestCase> cases;
+        for( const Catch::TestCase &tc : Catch::getAllTestCasesSorted( *config ) ) {
+            cases.emplace( tc.name, tc );
+        }
+
+        m_context.testGroupStarting( config->name(), 1, 1 );
+        while( !cases_queued.empty() ) {
+            const fs::path casefile = cases_queued.back();
+            const fs::path casefile_new = fs::u8path( casefile.string() + lock_suffix );
+            cases_queued.pop_back();
+            std::error_code ec;
+            fs::rename( casefile, casefile_new, ec );
+            if( ec.value() != 0 ) {
+                continue; // some other worker got it first
+            }
+            const std::string case_id = read_entire_file( casefile_new );
+            const auto tc_it = cases.find( case_id );
+            if( tc_it == cases.end() ) {
+                DebugLog( D_ERROR, DC_ALL ) << "case not found: '" << case_id << "'\n";
+                continue;
+            }
+            const Catch::TestCase &tc = tc_it->second;
+            cases_executed.emplace_back( tc.name );
+            write_to_file( test_execution_order_path,
+            [&cases_executed]( std::ostream & os ) {
+                for( const std::string &tc_name : cases_executed ) {
+                    os << tc_name << std::endl;
+                }
+            } );
+            if( !m_context.aborting() ) {
+                totals += m_context.runTest( tc );
+            } else {
+                m_context.reporter().skipTest( tc );
+            }
+            fs::remove( casefile_new );
+        }
+
+        m_context.testGroupEnded( config->name(), totals, 1, 1 );
+
+        if( config->warnAboutNoTests() && totals.error == -1 ) {
+            return 2;
+        }
+
+        // Note that on unices only the lower 8 bits are usually used, clamping
+        // the return value to 255 prevents false negative when some multiple
+        // of 256 tests has failed
+        return std::min( Catch::MaxExitCode,
+                         std::max( totals.error, static_cast<int>( totals.assertions.failed ) ) );
+    } catch( std::exception &ex ) {
+        Catch::cerr() << ex.what() << std::endl;
+        return Catch::MaxExitCode;
+    }
+}
+
 int main( int argc, const char *argv[] )
 {
     reset_floating_point_mode();
@@ -308,8 +391,14 @@ int main( int argc, const char *argv[] )
     option_overrides_t option_overrides_for_test_suite = extract_option_overrides( arg_vec );
 
     const bool dont_save = check_remove_flags( arg_vec, { "-D", "--drop-world" } );
+    const bool list_only = check_remove_flags( arg_vec, { "--list-test-names-only" } );
+    if( list_only ) { // insert back so Catch2 handles it
+        arg_vec.insert( arg_vec.begin() + 1, "--list-test-names-only" );
+    }
 
     std::string user_dir = extract_user_dir( arg_vec );
+
+    const fs::path tests_pool_dir = fs::u8path( extract_argument( arg_vec, "--tests-pool-dir=" ) );
 
     std::string error_fmt = extract_argument( arg_vec, "--error-format=" );
     if( error_fmt == "github-action" ) {
@@ -372,25 +461,32 @@ int main( int argc, const char *argv[] )
         DebugLog( D_INFO, DC_ALL ) << "Randomness seeded to: " << seed;
     }
 
-    try {
-        // TODO: Only init game if we're running tests that need it.
-        init_global_game_state( mods, option_overrides_for_test_suite, user_dir );
-    } catch( const std::exception &err ) {
-        DebugLog( D_ERROR, DC_ALL ) << "Terminated:\n" << err.what();
-        DebugLog( D_INFO, DC_ALL ) <<
-                                   "Make sure that you're in the correct working directory and your data isn't corrupted.";
-        return EXIT_FAILURE;
+    if( !list_only ) {
+        try {
+            // TODO: Only init game if we're running tests that need it.
+            init_global_game_state( mods, option_overrides_for_test_suite, user_dir );
+        } catch( const std::exception &err ) {
+            DebugLog( D_ERROR, DC_ALL ) << "Terminated:\n" << err.what();
+            DebugLog( D_INFO, DC_ALL ) <<
+                                       "Make sure that you're in the correct working directory and your data isn't corrupted.";
+            return EXIT_FAILURE;
+        }
+        DebugLog( D_INFO, DC_ALL ) << "Game data loaded, running Catch2 session:" << std::endl;
     }
+    const bool error_during_initialization = debug_has_error_been_observed();
 
-    bool error_during_initialization = debug_has_error_been_observed();
-
-    DebugLog( D_INFO, DC_ALL ) << "Game data loaded, running Catch2 session:" << std::endl;
     const std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
-    result = session.run();
+    if( !tests_pool_dir.empty() ) {
+        result = run_session_from_pool_directory( session, tests_pool_dir );
+    } else {
+        result = session.run();
+    }
     const std::chrono::system_clock::time_point end = std::chrono::system_clock::now();
 
-    std::string world_name = world_generator->active_world->world_name;
-    if( result == 0 || dont_save ) {
+    std::string world_name = list_only ? "" : world_generator->active_world->world_name;
+    if( world_name.empty() ) {
+        // noop, we're just printing catch2 lists
+    } else if( result == 0 || dont_save ) {
         world_generator->delete_world( world_name, true );
     } else {
         if( g->save() ) {
