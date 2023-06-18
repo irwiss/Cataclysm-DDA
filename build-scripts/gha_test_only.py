@@ -7,10 +7,11 @@ import tempfile
 import time
 import os
 from random import getrandbits as random_getrandbits
+from math import ceil, log2
 from multiprocessing import cpu_count as multiprocessing_cpu_count
 from shutil import rmtree as rm_dir_tree
 from signal import SIGINT, SIGTERM
-from typing import Any, Callable
+from typing import Callable
 
 # requires pip install
 from tqdm.auto import tqdm
@@ -39,6 +40,8 @@ class TestWorker:
     bar: tqdm
     time_started: time.time
     time_finished: time.time
+    report: str
+    reproduction_cmd: str
 
     def __init__(self, cli: list[str], user_dir: str):
         self.time_started = 0
@@ -51,6 +54,8 @@ class TestWorker:
         # using unit instead of postfix due to bug https://github.com/tqdm/tqdm/issues/712  # noqa E501
         self.bar = tqdm(total=1, leave=True)
         self.bar.bar_format = "{bar:10}{unit}"            # noqa E501
+        self.report = ""
+        self.reproduction_cmd = ""
 
     async def start(self):
         self.time_started = time.time()
@@ -120,7 +125,7 @@ class TestWorker:
             exit(1)
 
         self.bar.unit = ""
-        self.bar.unit += f" │ {self.bar.format_interval(interval)}"
+        self.bar.unit += f"│ {self.bar.format_interval(interval)}"
         self.bar.unit += f" │ {self.bar.n:4d} / {self.bar.total:4d}"
         #self.bar.unit += f" │ {100 * self.bar.n / self.bar.total:2.0f}%"
         self.bar.unit += f" │ {status.ljust(10)}"
@@ -154,6 +159,9 @@ class TestWorker:
         except Exception as ex:
             print(ex)
 
+    def ret_code(self):
+        return self.process.returncode
+
     async def finish(self):
         try:
             if self.process.returncode is None:
@@ -161,13 +169,13 @@ class TestWorker:
             if self.process.returncode != 0:
                 executed_tests = self.get_executed_tests()
                 if len(self.stderr) > 0:
-                    print(f"STDERR (exit code {self.process.returncode}): ")
+                    self.report += f"STDERR (exit code {self.ret_code()}):\n"
                     for x in filter(filter_useful_log_messages, self.stderr):
-                        print(x)
+                        self.report += x + "\n"
                 if len(self.stdout) > 0:
-                    print(f"STDOUT (exit code {self.process.returncode}): ")
+                    self.report += f"STDOUT (exit code {self.ret_code()}):\n"
                     for x in filter(filter_useful_log_messages, self.stdout):
-                        print(x)
+                        self.report += x + "\n"
 
                 def filter_useful_args(arg):
                     if arg.startswith("--tests-pool-dir=") or \
@@ -179,8 +187,9 @@ class TestWorker:
                 command = " ".join(cli) + " "
                 tests = ",".join(executed_tests)
                 if len(executed_tests) > 0:
-                    print("Command to replicate:")
-                    print(command + tests)
+                    self.reproduction_cmd = command + tests
+                    self.report += "Command to replicate failed job:"
+                    self.report += self.reproduction_cmd
             else:
                 self.clean_user_dir()
         except Exception as ex:
@@ -223,7 +232,7 @@ def get_tests_list(args: dict[str, any],
         return [x for x in ret if len(x.strip()) > 1]
 
 
-def count_test_cases_remaining(dir: str):
+def pool_count(dir: str):
     ret = 0
     for x in os.listdir(dir):
         file = os.path.join(dir, x)
@@ -236,23 +245,26 @@ def count_test_cases_remaining(dir: str):
     return ret
 
 
+def make_test_pool_dir(test_cases: list[str]):
+    dir = tempfile.TemporaryDirectory()
+    for i, tc in enumerate(test_cases):
+        with open(dir.name + "/{:05d}".format(i), "w") as f:
+            f.write(tc.strip())
+    return dir
+
+
 async def drive_test_suite(args: dict[str, any]):
-    with tempfile.TemporaryDirectory() as pool_dir:
+    tests_list = get_tests_list(args)
+    with make_test_pool_dir(tests_list) as pool_dir:
         workers: list[TestWorker] = []
         try:
             worker_idx = 0
-            tests_list = get_tests_list(args)
-
-            for i, tc in enumerate(tests_list):
-                with open(pool_dir + "/{:05d}".format(i), "w") as f:
-                    f.write(tc.strip())
-            print(f"Put tests into {pool_dir}")
 
             while True:
                 workers_alive = 0
-                cases_remaining = count_test_cases_remaining(pool_dir)
+                cases_remaining = pool_count(pool_dir)
 
-                for i, w in enumerate(workers):
+                for _, w in enumerate(workers):
                     if w.update_progress(cases_remaining):
                         workers_alive += 1
 
@@ -286,6 +298,143 @@ async def drive_test_suite(args: dict[str, any]):
                     print(ex)
             for w in workers:
                 await w.finish()
+                print(w.report)
+
+
+# search by chopping off 1 test at a time from the sides as long
+# as the test fails; once both sides succeed the prev_report is
+# the reproduction command
+def bisect_slice_sides(
+        w1: TestWorker | None, w2: TestWorker | None,
+        prev_report: str, cases1: list[str], cases2: list[str]):
+    try:
+        if len(cases2) == 0:  # Starting off
+            c1 = cases1[+1:]
+            c2 = cases1[:-1]
+            return [bisect_slice_sides, prev_report, c1, c2]
+        if w1.ret_code() == 0 and w2.ret_code() == 0:
+            # bail out (could try toggling individual tests)
+            return [None, prev_report, [], []]
+        elif w1.ret_code() != 0 and w2.ret_code() != 0:
+            # both failed, chop both sides
+            c1 = cases1[+1:]
+            c2 = cases2[:-1]
+            return [bisect_slice_sides, prev_report, c1, c2]
+        elif w1.ret_code() != 0:
+            c1 = cases1[+1:]
+            c2 = cases2
+            return [bisect_slice_sides, w1.reproduction_cmd, c1, c2]
+        elif w2.ret_code() != 0:
+            c1 = cases1
+            c2 = cases2[:-1]
+            return [bisect_slice_sides, w2.reproduction_cmd, c1, c2]
+        else:
+            return [None, "-- failed in a weird state --", [], []]
+    except Exception as e:
+        print(e)
+
+
+# binary search - slice in the middle, check if which half fails;
+# slice failing half etc until both halves succeed, then take the
+# half that fails and feed to bisect_slice_sides
+def bisect_slice_middle(
+    w1: TestWorker | None, w2: TestWorker | None,
+        prev_report: str, cases1: list[str], cases2: list[str]):
+
+    if len(cases2) == 0:  # Starting off
+        c1 = cases1[:len(cases1) // 2]
+        c2 = cases1[len(cases1) // 2:]
+        return [bisect_slice_middle, prev_report, c1, c2]
+    if (w1.ret_code() != 0 and w2.ret_code() != 0) or \
+       (w1.ret_code() == 0 and w2.ret_code() == 0):
+        # Exhausted middle split, try slicing from sides
+        c1 = cases1 + cases2
+        c2 = []
+        return bisect_slice_sides(w1, w2, prev_report, c1, c2)
+    elif w1.ret_code() != 0:
+        c1 = cases1[:len(cases1) // 2]
+        c2 = cases1[len(cases1) // 2:]
+        return [bisect_slice_middle, w1.reproduction_cmd, c1, c2]
+    elif w2.ret_code() != 0:
+        c1 = cases2[:len(cases2) // 2]
+        c2 = cases2[len(cases2) // 2:]
+        return [bisect_slice_middle, w2.reproduction_cmd, c1, c2]
+    else:
+        return [None, "-- failed in a weird state --", [], []]
+
+
+async def drive_bisect(args: dict[str, any]):
+    tests_list = str(args["test_sequence"]).split(',')
+    cases1 = tests_list
+    cases2 = []
+    bisect_strat = bisect_slice_middle if len(tests_list) > 1 else None
+    w1: TestWorker | None = None
+    w2: TestWorker | None = None
+    report = ""
+    while bisect_strat is not None:
+        bisect_strat, report, cases1, cases2 = bisect_strat(
+            w1, w2, report, cases1, cases2)
+        if len(cases1) + len(cases2) < 2:
+            break
+        print('─' * 20 +
+              f" {str(bisect_strat.__name__)} " +
+              '─' * 20)
+        try:
+            with make_test_pool_dir(cases1) as pool_dir1, \
+                 make_test_pool_dir(cases2) as pool_dir2:
+                w1 = make_worker(0, args, pool_dir1)
+                w2 = make_worker(1, args, pool_dir2)
+
+                w1.set_progress_max(len(cases1))
+                w2.set_progress_max(len(cases2))
+
+                w1.update_progress(pool_count(pool_dir1))
+                w2.update_progress(pool_count(pool_dir2))
+
+                await w1.start()
+                await w2.start()
+
+                try:
+                    while w1.is_alive() or w2.is_alive():
+                        w1.update_progress(pool_count(pool_dir1))
+                        w2.update_progress(pool_count(pool_dir2))
+
+                        await asyncio.sleep(0.25)
+
+                    # workers completed, gather results below
+                    w1.update_progress(pool_count(pool_dir1))
+                    w2.update_progress(pool_count(pool_dir2))
+                except asyncio.exceptions.CancelledError as ex:
+                    print(ex)
+                    return 1
+                except Exception as e:
+                    print(e)
+                    return 2
+                finally:
+                    for w in [w1, w2]:
+                        if w is None:
+                            continue
+                        try:
+                            w.bar.leave = True
+                            w.bar.close()
+                            await w.stop()
+                        except Exception as ex:
+                            print(ex)
+                    for w in [w1, w2]:
+                        if w is None:
+                            continue
+                        await w.finish()
+        except Exception as e:
+            print(e)
+            return 3
+
+    # just one of the workers failed and only one test left - print report
+    if report != "":
+        print("Command to reproduce:\n" + report)
+    else:
+        print("The given test sequence is failing, nothing to bisect")
+    print("\nBisect finished.")
+    return 0
 
 
 def run_async(main_coroutine: Callable[[], int]) -> int:
@@ -324,6 +473,9 @@ args_parser.add_argument("--wine", type=str,
 args_parser.add_argument("--rng-seed", type=int,
                          help="rng seed, if 0 a random value is rolled",
                          default=0)
+args_parser.add_argument("--test-sequence", type=str,
+                         help="test sequence to bisect",
+                         default=0)
 args_parser.add_argument("action")
 
 args = vars(args_parser.parse_args())
@@ -336,5 +488,9 @@ if args["rng_seed"] == 0:
 if args["action"] == "test":
     ret = run_async(drive_test_suite(args))
     exit(ret)
+if args["action"] == "bisect":
+    ret = run_async(drive_bisect(args))
+    exit(ret)
 else:
     args_parser.print_help()
+    exit(0)
