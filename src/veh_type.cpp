@@ -1543,6 +1543,117 @@ void vehicles::finalize_prototypes()
     }
 }
 
+static void dump_vparts_json()
+{
+    const auto dump_req = []( JsonOut & jo, const std::string & name, const requirement_data & rd ) {
+        if( rd.is_empty() ) {
+            return;
+        }
+        jo.write( name );
+        jo.write_member_separator();
+        rd.dump( jo );
+    };
+
+    std::vector<std::string> ids;
+    for( const vpart_info &vpi : vehicles::parts::get_all() ) {
+        ids.push_back( vpi.id.str() );
+    }
+    std::sort( ids.begin(), ids.end() );
+    write_to_file( PATH_INFO::base_path_path() / "vparts_dump.json", [&]( std::ostream & fout ) {
+        JsonOut jo( fout, true );
+        jo.start_array();
+        for( const std::string &vpid_str : ids ) {
+            const vpart_info &vpi = vpart_id( vpid_str ).obj();
+            jo.start_object( true );
+            jo.member( "id", vpi.id.str() );
+            jo.member( "name", vpi.name() );
+            jo.member( "looks_like", vpi.looks_like );
+            jo.member( "flags", vpi.get_flags() );
+            jo.member( "categories", vpi.get_categories() );
+            jo.member( "color", vpi.color );
+            jo.member( "color_broken", vpi.color_broken );
+            jo.member( "install_time", vpi.install_moves, 1_hours );
+            jo.member( "removal_time", vpi.removal_moves, -1_seconds );
+            jo.member( "repair_time", vpi.repair_moves, 1_hours );
+            jo.member( "is_repairable", vpi.is_repairable(), false );
+            dump_req( jo, "install_reqs", vpi.install_requirements() );
+            dump_req( jo, "removal_reqs", vpi.removal_requirements() );
+            dump_req( jo, "repair_reqs", vpi.repair_requirements() );
+            if( !vpi.engine_fuel_opts().empty() ) {
+                jo.member( "engine_excludes", vpi.engine_excludes() );
+                jo.member( "engine_m2c", vpi.engine_m2c(), 0 );
+                jo.member( "engine_backfire_threshold", vpi.engine_backfire_threshold(), 0.0f );
+                jo.member( "engine_backfire_freq", vpi.engine_backfire_freq(), 0 );
+                jo.member( "engine_muscle_power_factor", vpi.engine_muscle_power_factor(), 0 );
+                jo.member( "engine_damaged_power_factor", vpi.engine_damaged_power_factor(), 0.0f );
+                jo.member( "engine_noise_factor", vpi.engine_noise_factor() );
+                jo.member( "engine_fuel_opts", vpi.engine_fuel_opts() );
+            }
+            if( vpi.wheel_area() ) {
+                jo.member( "wheel_rolling_resistance", vpi.wheel_rolling_resistance() );
+                jo.member( "wheel_area", vpi.wheel_area() );
+                jo.write( "wheel_terrain_modifiers" );
+                jo.write_member_separator();
+                jo.start_array( false );
+                for( const auto &tm : vpi.wheel_terrain_modifiers() ) {
+                    jo.start_object( false );
+                    jo.member( "flag", tm.terrain_flag );
+                    jo.member( "move_override", tm.move_override );
+                    jo.member( "move_penalty", tm.move_penalty );
+                    jo.end_object();
+                }
+                jo.end_array();
+                jo.member( "wheel_offroad_rating", vpi.wheel_offroad_rating(), 0.0f );
+            }
+            jo.write( "variants" );
+            jo.write_member_separator();
+            jo.start_array( true );
+            for( const auto &[vv_id, vv] : vpi.variants ) {
+                jo.start_object( false );
+                jo.member( "id", vv.id );
+                jo.member( "symbols", vv.symbols );
+                jo.member( "symbols_broken", vv.symbols_broken );
+                jo.end_object();
+            }
+            jo.end_array();
+            jo.member( "rotor_diameter", vpi.rotor_diameter(), 0 );
+            jo.member( "get_pseudo_tools", vpi.get_pseudo_tools(), {} );
+            jo.member( "get_folding_tools", vpi.get_folding_tools(), {} );
+            jo.member( "get_unfolding_tools", vpi.get_unfolding_tools(), {} );
+            jo.member( "get_folding_time", vpi.get_folding_time(), 10_seconds );
+            jo.member( "get_unfolding_time", vpi.get_unfolding_time(), 10_seconds );
+            jo.member( "breaks_into_group", vpi.breaks_into_group.str() );
+            jo.member( "damage_reduction", vpi.damage_reduction );
+            jo.member( "qualities", vpi.qualities, {} );
+            jo.member( "emissions", vpi.emissions, {} );
+            jo.member( "exhaust", vpi.exhaust, {} );
+            jo.member( "fuel_type", vpi.fuel_type, itype_null );
+            jo.member( "default_ammo", vpi.default_ammo, itype_null );
+            if( vpi.folded_volume ) {
+                jo.member( "folded_volume", vpi.folded_volume.value() );
+            }
+            jo.member( "size", vpi.size, 0_ml );
+            jo.member( "description", vpi.description.translated() );
+            jo.member( "base_item", vpi.base_item );
+            jo.member( "location", vpi.location );
+            jo.member( "durability", vpi.durability, 0 );
+            jo.member( "dmg_mod", vpi.dmg_mod, 100 );
+            jo.member( "epower", vpi.epower, 0_W );
+            jo.member( "energy_consumption", vpi.energy_consumption, 0_W );
+            jo.member( "power", vpi.power, 0_W );
+            jo.member( "bonus", vpi.bonus, 0 );
+            jo.member( "cargo_weight_modifier", vpi.cargo_weight_modifier, 100 );
+            jo.member( "comfort", vpi.comfort, 0 );
+            jo.member( "floor_bedding_warmth", vpi.floor_bedding_warmth, 0 );
+            jo.member( "bonus_fire_warmth_feet", vpi.bonus_fire_warmth_feet, 300 );
+            jo.member( "z_order", vpi.z_order, 0 );
+            jo.member( "list_order", vpi.list_order, 0 );
+            jo.end_object();
+        }
+        jo.end_array();
+    } );
+}
+
 static std::vector<vpart_category> vpart_categories_all;
 
 const std::vector<vpart_category> &vpart_category::all()
@@ -1615,6 +1726,7 @@ void vpart_migration::check()
                       from_id.str(), vm.part_id_new.str(), vm.variant.value() );
         }
     }
+    dump_vparts_json();
 }
 
 const vpart_migration *vpart_migration::find_migration( const vpart_id &original )
