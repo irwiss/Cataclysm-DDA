@@ -1462,6 +1462,7 @@ void sfx::do_projectile_hit( const Creature &target )
             material_veggy,
             material_bone,
         };
+        debugmsg( "foo" );
         const bool is_fleshy = std::any_of( fleshy.begin(), fleshy.end(), [&mon]( const material_id & m ) {
             return mon.made_of( m );
         } );
