@@ -1240,9 +1240,9 @@ int vpart_info::rotor_diameter() const
     return 0;
 }
 
-int vpart_info::balloon_volume() const
+units::volume vpart_info::balloon_volume() const
 {
-    return has_flag( "BALLOON" ) ? balloon_info->balloon_volume : 0;
+    return has_flag( "BALLOON" ) ? balloon_info->balloon_volume : 0_ml;
 }
 
 const std::optional<vpslot_workbench> &vpart_info::get_workbench_info() const

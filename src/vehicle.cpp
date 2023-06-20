@@ -4152,33 +4152,26 @@ static double air_density( units::temperature temperature, int humidity, int pre
     return density * 100.0;
 }
 
-// Fl = V (ρc - ρh) ag
-//where
-//Fl = lifting force (N)
-//V = balloon volume (m3)
-//ρc = density cold surrounding air (kg/m3)
-//ρh = density hot balloon air (kg/m3)
-//ag = acceleration of gravity (9.8 m/s2)
-
-double vehicle::lift_of_balloon() const
+/// Fl = V (ρc - ρh) ag
+/// where
+/// Fl = lifting force (N)
+/// V = balloon volume (m3)
+/// ρc = density cold surrounding air (kg/m3)
+/// ρh = density hot balloon air (kg/m3)
+/// ag = acceleration of gravity (9.8 m/s2)
+/// @return lift in kilograms (skips the ag part)
+units::mass vehicle::lift_of_balloon() const
 {
-    int total_volume = 0;
-    double total_condition = 0.0;
-    double average_condition = 0.0;
-    int balloon_count = 0;
+    units::volume total_volume = 0_ml;
     for( const vpart_reference &vp : get_avail_parts( "BALLOON" ) ) {
-        const size_t p = vp.part_index();
-        if( parts[p].is_broken() || parts[p].removed ) {
+        if( vp.part().removed ) {
             continue;
         }
-        total_condition += vp.part().health_percent();
-        balloon_count++;
-        total_volume += part_info( p ).balloon_volume();
+        total_volume += vp.info().balloon_volume() * vp.part().health_percent();
     }
-    if( total_volume == 0 ) {
-        return 0.0;
+    if( total_volume == 0_ml ) {
+        return 0_kilogram;
     }
-    average_condition = total_condition / balloon_count;
     // assume max operating temp for a balloon
     // assume player heats it to this temp, when they want to climb.
     const units::temperature total_temp = units::from_fahrenheit( 250 );
@@ -4190,14 +4183,14 @@ double vehicle::lift_of_balloon() const
     const int local_pressure = static_cast<int>( wdata.pressure );
     const double density_outside = air_density( local_temp, local_humidity, local_pressure, false );
     const double density_inside = air_density( total_temp, local_humidity, local_pressure, true );
-    // now we have outside air density.
-    // now we calculate the lift.
-    return ( total_volume * ( density_outside - density_inside ) * 9.8 ) * average_condition;
+    const double density_difference = density_outside - density_inside; // kg/m3
+    // volume (m3) * density difference (kg/m3) = the lifted mass (kg)
+    return units::from_kilogram( units::to_liter( total_volume ) * density_difference );
 }
 
 bool vehicle::has_sufficient_balloon_lift() const
 {
-    return lift_of_balloon() > to_kilogram( total_mass() ) * 9.8;
+    return lift_of_balloon() > total_mass();
 }
 
 bool vehicle::has_sufficient_rotorlift() const

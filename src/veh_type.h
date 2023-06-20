@@ -138,7 +138,7 @@ struct vpslot_wheel {
 };
 
 struct vpslot_balloon {
-    int balloon_volume = 1;
+    units::volume balloon_volume = 0_ml;
 };
 
 struct vpslot_rotor {
@@ -318,7 +318,7 @@ class vpart_info
         int rotor_diameter() const;
         /** @name balloon specific functions
         */
-        int balloon_volume() const;
+        units::volume balloon_volume() const;
         /**
          * Getter for optional workbench info
          */

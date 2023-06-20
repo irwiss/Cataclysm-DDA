@@ -1618,7 +1618,7 @@ class vehicle
         bool check_is_heli_landed();
 
         // Balloons
-        double lift_of_balloon() const;
+        units::mass lift_of_balloon() const;
         bool has_sufficient_balloon_lift() const;
         bool has_burner_fuel() const;
         bool is_burner_fuel( itype_id fuel ) const;
