@@ -3526,6 +3526,7 @@ void vehicle::deserialize( const JsonObject &data )
     data.read( "is_following", is_following );
     data.read( "is_patrolling", is_patrolling );
     data.read( "autodrive_local_target", autodrive_local_target );
+    data.read( "desired_altitude", desired_altitude );
     data.read( "airworthy", flyable );
     data.read( "requested_z_change", requested_z_change );
     data.read( "summon_time_limit", summon_time_limit );
@@ -3642,6 +3643,7 @@ void vehicle::serialize( JsonOut &json ) const
     json.member( "is_following", is_following );
     json.member( "is_patrolling", is_patrolling );
     json.member( "autodrive_local_target", autodrive_local_target );
+    json.member( "desired_altitude", desired_altitude );
     json.member( "airworthy", flyable );
     json.member( "requested_z_change", requested_z_change );
     json.member( "summon_time_limit", summon_time_limit );

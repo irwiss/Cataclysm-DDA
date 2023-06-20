@@ -21,6 +21,11 @@
     "info": "Armor plate.  Will partially protect other components on the same frame from damage from direct attacks but not from the shock damage of a distant collision."
   },
   {
+    "id": "BALLOON",
+    "type": "json_flag",
+    "//": "flag for balloon envelope vehicle parts"
+  },
+  {
     "id": "BED",
     "type": "json_flag",
     "info": "You can sleep here comfortably."
@@ -29,6 +34,11 @@
     "id": "BELTABLE",
     "type": "json_flag",
     "info": "You can install a seat belt or five part harness here to help keep you in your seat during a collision."
+  },
+  {
+    "id": "BURNER",
+    "type": "json_flag",
+    "//": "flag for balloon burner vehicle parts"
   },
   {
     "id": "CABLE_PORTS",

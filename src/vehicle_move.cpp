@@ -438,7 +438,7 @@ void vehicle::thrust( int thd, int z )
     bool pl_ctrl = player_in_control( get_player_character() );
 
     // No need to change velocity if there are no wheels
-    if( ( is_watercraft() && can_float() ) || ( is_rotorcraft() && ( z != 0 || is_flying ) ) ) {
+    if( ( is_watercraft() && can_float() ) || ( is_airworthy() && ( z != 0 || is_flying ) ) ) {
         // we're good
     } else if( in_deep_water && !can_float() ) {
         stop();
@@ -475,7 +475,7 @@ void vehicle::thrust( int thd, int z )
         }
         return;
     }
-    if( thrusting && accel == 0 ) {
+    if( thrusting && accel == 0 && z != 0 && !is_hot_air_balloon() ) {
         if( pl_ctrl ) {
             if( has_engine_type( fuel_type_muscle, true ) ) {
                 add_msg( _( "The %s is too heavy to move!" ), name );
@@ -713,7 +713,7 @@ bool vehicle::collision( std::vector<veh_collision> &colls,
     const bool vertical = bash_floor || dp.z != 0;
     const int &coll_velocity = vertical ? vertical_velocity : velocity;
     // Skip collisions when there is no apparent movement, except verticially moving rotorcraft.
-    if( coll_velocity == 0 && !is_rotorcraft() ) {
+    if( coll_velocity == 0 && !is_airworthy() ) {
         just_detect = true;
     }
 
@@ -1327,11 +1327,11 @@ bool vehicle::check_is_heli_landed()
     return false;
 }
 
-bool vehicle::check_heli_descend( Character &p ) const
+std::pair<bool, std::string> vehicle::check_aircraft_descend( bool only_stationary_landing ) const
 {
-    if( !is_rotorcraft() ) {
-        debugmsg( "A vehicle is somehow flying without being an aircraft" );
-        return true;
+    if( !is_airworthy() ) {
+        debugmsg( "vehicle is somehow flying without being an aircraft" );
+        return std::make_pair( false, "BUG" );
     }
     int count = 0;
     int air_count = 0;
@@ -1340,14 +1340,12 @@ bool vehicle::check_heli_descend( Character &p ) const
     for( const tripoint &pt : get_points( true ) ) {
         tripoint below( pt.xy(), pt.z - 1 );
         if( pt.z < -OVERMAP_DEPTH || !here.has_flag_ter_or_furn( ter_furn_flag::TFLAG_NO_FLOOR, pt ) ) {
-            p.add_msg_if_player( _( "You are already landed!" ) );
-            return false;
+            return std::make_pair( false, _( "You are already landed!" ) );
         }
         const optional_vpart_position ovp = here.veh_at( below );
         if( here.impassable_ter_furn( below ) || ovp || creatures.creature_at( below ) ) {
-            p.add_msg_if_player( m_bad,
-                                 _( "It would be unsafe to try and land when there are obstacles below you." ) );
-            return false;
+            return std::make_pair( false,
+                                   _( "It would be unsafe to try and land when there are obstacles below you." ) );
         }
         if( here.has_flag_ter_or_furn( ter_furn_flag::TFLAG_NO_FLOOR, below ) ) {
             air_count++;
@@ -1355,46 +1353,43 @@ bool vehicle::check_heli_descend( Character &p ) const
         count++;
     }
     if( velocity > 0 && air_count != count ) {
-        p.add_msg_if_player( m_bad, _( "It would be unsafe to try and land while you are moving." ) );
-        return false;
+        return std::make_pair( false, _( "It would be unsafe to try and land while you are moving." ) );
     }
-    return true;
-
+    return std::make_pair( true, "" );
 }
 
-bool vehicle::check_heli_ascend( Character &p ) const
+std::pair<bool, std::string> vehicle::check_aircraft_ascend() const
 {
-    if( !is_rotorcraft() ) {
-        debugmsg( "A vehicle is somehow flying without being an aircraft" );
-        return true;
+    if( !is_airworthy() ) {
+        debugmsg( "vehicle is somehow flying without being an aircraft" );
+        return std::make_pair( false, "BUG" );
     }
     if( velocity > 0 && !is_flying_in_air() ) {
-        p.add_msg_if_player( m_bad, _( "It would be unsafe to try and take off while you are moving." ) );
-        return false;
+        return std::make_pair( false, _( "It would be unsafe to try and take off while you are moving." ) );
     }
     if( sm_pos.z + 1 >= OVERMAP_HEIGHT ) {
-        return false; // don't allow trying to ascend to max zlevel
+        // don't allow trying to ascend to max zlevel or lightmap lookup causes a crash
+        return std::make_pair( false, _( "You are already at maximum altitude." ) );
     }
     map &here = get_map();
     creature_tracker &creatures = get_creature_tracker();
     for( const tripoint &pt : get_points( true ) ) {
-        tripoint above( pt.xy(), pt.z + 1 );
+        const tripoint above( pt.xy(), pt.z + 1 );
         const optional_vpart_position ovp = here.veh_at( above );
         if( here.has_flag_ter_or_furn( ter_furn_flag::TFLAG_INDOORS, pt ) ||
             here.impassable_ter_furn( above ) ||
             ovp ||
             creatures.creature_at( above ) ) {
-            p.add_msg_if_player( m_bad,
-                                 _( "It would be unsafe to try and ascend when there are obstacles above you." ) );
-            return false;
+            return std::make_pair( false,
+                                   _( "It would be unsafe to try and ascend when there are obstacles above you." ) );
         }
     }
-    return true;
+    return std::make_pair( true, "" );
 }
 
 void vehicle::pldrive( Character &driver, const point &p, int z )
 {
-    if( z != 0 && is_rotorcraft() ) {
+    if( z != 0 && is_airworthy() ) {
         driver.moves = std::min( driver.moves, 0 );
         thrust( 0, z );
     }
@@ -1745,6 +1740,22 @@ bool vehicle::is_wheel_state_correct_to_turn_on_rails( int wheels_on_rail, int w
     // allow turn for vehicles with wheel distance < 4 when moving backwards
 }
 
+void vehicle::wind_movement()
+{
+    int windspeed = get_weather_const().windspeed;
+    if( sm_pos.z > 0 ) {
+        windspeed = windspeed + ( sm_pos.z * std::min( 5, windspeed ) );
+    }
+    if( windspeed < 3 || !x_in_y( std::min( windspeed / 2, 20 ), 40 ) ) {
+        velocity = 0;
+        return;
+    }
+    const units::angle winddirection = units::from_degrees( get_weather_const().winddirection );
+    move = tileray( winddirection + 90_degrees );
+    skidding = true;
+    velocity = windspeed * 8;
+}
+
 vehicle *vehicle::act_on_map()
 {
     const tripoint pt = global_pos3();
@@ -1799,7 +1810,10 @@ vehicle *vehicle::act_on_map()
         // Not actually falling, was just marked for fall test
         is_falling = false;
     }
-
+    // no other forces acting on vehicle, and is drifing in the wind.
+    if( is_hot_air_balloon() && is_flying ) {
+        wind_movement();
+    }
     // Low enough for bicycles to go in reverse.
     // If the movement is due to a change in z-level, i.e a helicopter then the lateral movement will often be zero.
     if( !should_fall && std::abs( velocity ) < 20 && requested_z_change == 0 ) {
@@ -1827,7 +1841,7 @@ vehicle *vehicle::act_on_map()
     // Can't afford it this turn?
     // Low speed shouldn't prevent vehicle from falling, though
     bool falling_only = false;
-    if( turn_cost >= of_turn && ( ( !is_flying && requested_z_change == 0 ) || !is_rotorcraft() ) ) {
+    if( turn_cost >= of_turn && ( ( !is_flying && requested_z_change == 0 ) || !is_airworthy() ) ) {
         if( !should_fall ) {
             of_turn_carry = of_turn;
             of_turn = 0;
@@ -1863,7 +1877,7 @@ vehicle *vehicle::act_on_map()
         }
     }
 
-    if( skidding && one_in( 4 ) ) {
+    if( skidding && !is_hot_air_balloon() && one_in( 4 ) ) {
         // Might turn uncontrollably while skidding
         turn( vehicles::steer_increment * ( one_in( 2 ) ? -1 : 1 ) );
     }
@@ -1912,7 +1926,7 @@ vehicle *vehicle::act_on_map()
     } else {
         dp.z = requested_z_change;
         requested_z_change = 0;
-        if( dp.z > 0 && is_rotorcraft() ) {
+        if( dp.z > 0 && is_airworthy() ) {
             is_flying = true;
         }
     }
@@ -1977,7 +1991,7 @@ bool vehicle::level_vehicle()
 void vehicle::check_falling_or_floating()
 {
     // If we're flying none of the rest of this matters.
-    if( is_flying && is_rotorcraft() ) {
+    if( is_flying && is_airworthy() ) {
         is_falling = false;
         in_deep_water = false;
         in_water = false;

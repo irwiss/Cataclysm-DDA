@@ -137,6 +137,10 @@ struct vpslot_wheel {
     float offroad_rating = 0.5f;
 };
 
+struct vpslot_balloon {
+    int balloon_volume = 1;
+};
+
 struct vpslot_rotor {
     int rotor_diameter = 1;
 };
@@ -227,6 +231,7 @@ class vpart_variant
 class vpart_info
 {
     public:
+        static void load_balloon( std::optional<vpslot_balloon> &balptr, const JsonObject &jo );
         static void load_engine( std::optional<vpslot_engine> &eptr, const JsonObject &jo,
                                  const itype_id &fuel_type );
         static void load_wheel( std::optional<vpslot_wheel> &whptr, const JsonObject &jo );
@@ -311,6 +316,9 @@ class vpart_info
         /** @name rotor specific functions
         */
         int rotor_diameter() const;
+        /** @name balloon specific functions
+        */
+        int balloon_volume() const;
         /**
          * Getter for optional workbench info
          */
@@ -351,6 +359,7 @@ class vpart_info
         // time required to unfold this part
         time_duration unfolding_time = time_duration::from_seconds( 10 );
 
+        std::optional<vpslot_balloon> balloon_info;
         std::optional<vpslot_engine> engine_info;
         std::optional<vpslot_wheel> wheel_info;
         std::optional<vpslot_rotor> rotor_info;

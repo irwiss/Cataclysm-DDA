@@ -83,6 +83,8 @@ struct rider_data {
     Creature *psg = nullptr;
     int prt = -1;
     bool moved = false;
+
+    rider_data( Creature *psg, int prt, bool moved ): psg( psg ), prt( prt ), moved( moved ) {}
 };
 //collision factor for vehicle-vehicle collision; delta_v in mph
 float get_collision_factor( float delta_v );
@@ -1320,7 +1322,8 @@ class vehicle
         std::vector<int> boarded_parts() const;
 
         // get a list of part indices and Creature pointers with a rider
-        std::vector<rider_data> get_riders() const;
+        // @param include_non_boardable is for z_changes where you cant really leave people behind.
+        std::vector<rider_data> get_riders( bool include_non_boardable = false ) const;
 
         // is given character a passenger of this vehicle
         bool is_passenger( Character &c ) const;
@@ -1612,6 +1615,22 @@ class vehicle
         // of non-simple parts
         bool is_flyable() const;
         void set_flyable( bool val );
+        bool check_is_heli_landed();
+
+        // Balloons
+        double lift_of_balloon() const;
+        bool has_sufficient_balloon_lift() const;
+        bool has_burner_fuel() const;
+        bool is_burner_fuel( itype_id fuel ) const;
+        void control_burner( int burner );
+        bool is_hot_air_balloon() const;
+        void wind_movement();
+        void balloon_vertical_movement();
+        bool is_airworthy() const;
+        std::pair<bool, std::string> check_aircraft_descend( bool only_stationary_landing = false ) const;
+        std::pair<bool, std::string> check_aircraft_ascend() const;
+        int desired_altitude = 0;
+
         // Would interacting with this part prevent the vehicle from being flyable?
         bool would_install_prevent_flyable( const vpart_info &vpinfo, const Character &pc ) const;
         bool would_removal_prevent_flyable( const vehicle_part &vp, const Character &pc ) const;
@@ -1700,12 +1719,6 @@ class vehicle
          * vehicle is driving itself
          */
         void selfdrive( const point & );
-        /**
-         * can the helicopter descend/ascend here?
-         */
-        bool check_heli_descend( Character &p ) const;
-        bool check_heli_ascend( Character &p ) const;
-        bool check_is_heli_landed();
         /**
          * Player is driving the vehicle
          * @param p direction player is steering
@@ -2003,6 +2016,7 @@ class vehicle
         void use_harness( int part, const tripoint &pos );
 
         void build_electronics_menu( veh_menu &menu );
+        void build_balloon_burner_menu( veh_menu &menu, int part );
         void build_bike_rack_menu( veh_menu &menu, int part );
         void build_interact_menu( veh_menu &menu, const tripoint &p, bool with_pickup );
         void interact_with( const tripoint &p, bool with_pickup = false );

@@ -262,6 +262,17 @@ void vpart_info::load_toolkit( std::optional<vpslot_toolkit> &tkptr, const JsonO
     cata_assert( tkptr );
 }
 
+void vpart_info::load_balloon( std::optional<vpslot_balloon> &balptr, const JsonObject &jo )
+{
+    vpslot_balloon balloon_info{};
+    if( balptr ) {
+        balloon_info = *balptr;
+    }
+    assign( jo, "balloon_volume", balloon_info.balloon_volume );
+    balptr = balloon_info;
+    cata_assert( balptr );
+}
+
 void vpart_info::load_wheel( std::optional<vpslot_wheel> &whptr, const JsonObject &jo )
 {
     vpslot_wheel wh_info{};
@@ -469,6 +480,10 @@ void vpart_info::load( const JsonObject &jo, const std::string &src )
 
     if( def.has_flag( "ROTOR" ) || def.has_flag( "ROTOR_SIMPLE" ) ) {
         load_rotor( def.rotor_info, jo );
+    }
+
+    if( def.has_flag( "BALLOON" ) ) {
+        load_balloon( def.balloon_info, jo );
     }
 
     if( def.has_flag( "WORKBENCH" ) ) {
@@ -1223,6 +1238,11 @@ int vpart_info::rotor_diameter() const
         return rotor_info->rotor_diameter;
     }
     return 0;
+}
+
+int vpart_info::balloon_volume() const
+{
+    return has_flag( "BALLOON" ) ? balloon_info->balloon_volume : 0;
 }
 
 const std::optional<vpslot_workbench> &vpart_info::get_workbench_info() const

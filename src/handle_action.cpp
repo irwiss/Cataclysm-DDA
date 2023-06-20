@@ -510,27 +510,35 @@ static void pldrive( const tripoint &p )
         }
     }
     if( p.z != 0 ) {
-        if( !player_character.has_proficiency( proficiency_prof_helicopter_pilot ) ) {
-            player_character.add_msg_if_player( m_info, _( "You have no idea how to make the vehicle fly." ) );
-            return;
-        }
-        if( !veh->is_flyable() ) {
-            player_character.add_msg_if_player( m_info, _( "This vehicle doesn't look very airworthy." ) );
+        if( veh->is_rotorcraft() ) {
+            if( !player_character.has_proficiency( proficiency_prof_helicopter_pilot ) ) {
+                player_character.add_msg_if_player( m_info, _( "You have no idea how to make the vehicle fly." ) );
+                return;
+            }
+            if( !veh->is_flyable() ) {
+                player_character.add_msg_if_player( m_info, _( "This vehicle doesn't look very airworthy." ) );
+                return;
+            }
+        } else if( veh->is_hot_air_balloon() ) {
+            player_character.add_msg_if_player( m_info,
+                                                _( "To fly in a hot air balloon, operate the burner from the controls." ) );
             return;
         }
     }
     if( p.z == -1 ) {
-        if( veh->check_heli_descend( player_character ) ) {
-            player_character.add_msg_if_player( m_info, _( "You steer the vehicle into a descent." ) );
-        } else {
+        const std::pair<bool, std::string> check_descend = veh->check_aircraft_descend( true );
+        if( !check_descend.first ) {
+            player_character.add_msg_if_player( m_info, "%s", check_descend.second );
             return;
         }
+        player_character.add_msg_if_player( m_info, _( "You steer the vehicle into an ascent." ) );
     } else if( p.z == 1 ) {
-        if( veh->check_heli_ascend( player_character ) ) {
-            player_character.add_msg_if_player( m_info, _( "You steer the vehicle into an ascent." ) );
-        } else {
+        const std::pair<bool, std::string> check_ascend = veh->check_aircraft_ascend();
+        if( !check_ascend.first ) {
+            player_character.add_msg_if_player( m_info, "%s", check_ascend.second );
             return;
         }
+        player_character.add_msg_if_player( m_info, _( "You steer the vehicle into an ascent." ) );
     }
     veh->pldrive( get_avatar(), p.xy(), p.z );
 }

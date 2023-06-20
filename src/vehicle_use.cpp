@@ -1601,6 +1601,44 @@ void vehicle::build_bike_rack_menu( veh_menu &menu, int part )
     }
 }
 
+void vehicle::build_balloon_burner_menu( veh_menu &menu, int part )
+{
+    if( !has_burner_fuel() ) {
+        menu.add( string_format( _( "Balloon burner is out of fuel" ) ) )
+        .enable( false )
+        .skip_locked_check();
+        return;
+    }
+    menu.add( string_format( _( "Set desired altitude for balloon flight" ) ) )
+    .hotkey_auto()
+    .on_submit( [this, part] {
+        vehicle_part &burner = parts[part];
+        const int altitude = string_input_popup()
+        .title( _( "Select a desired altitude: ( 0 - 9 )" ) )
+        .width( 20 )
+        .only_digits( true )
+        .query_int();
+        if( altitude < 0 || altitude > 9 )
+        {
+            popup( _( "That is not a valid altitude" ) );
+            return;
+        }
+        desired_altitude = altitude;
+        burner.enabled = true;
+        if( desired_altitude > sm_pos.z )
+        {
+            add_msg( m_info, _( "You start burning to raise altitude." ) );
+        } else if( desired_altitude < sm_pos.z )
+        {
+            add_msg( m_info, _( "You turn off the burner, and start descending." ) );
+            burner.enabled = false;
+        } else
+        {
+            add_msg( m_info, _( "You start a steady burn to maintain altitude." ) );
+        }
+    } );
+}
+
 void vpart_position::form_inventory( inventory &inv ) const
 {
     const std::optional<vpart_reference> vp_faucet = part_with_tool( itype_water_faucet );
@@ -1858,6 +1896,11 @@ void vehicle::build_interact_menu( veh_menu &menu, const tripoint &p, bool with_
             .hotkey( "CONTROL_ENGINES" )
             .on_submit( [this] { control_engines(); } );
         }
+    }
+
+    const std::optional<vpart_reference> vp_burner = vp.avail_part_with_feature( "BURNER" );
+    if( vp_burner ) {
+        build_balloon_burner_menu( menu, vp_burner->part_index() );
     }
 
     if( controls_here && has_part( "AUTOPILOT" ) && has_electronic_controls ) {

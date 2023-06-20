@@ -798,7 +798,10 @@ bool veh_interact::update_part_requirements()
         msg = _( "Unracking is required before installing any parts here." );
         return false;
     }
-
+    if( sel_vpart_info->has_flag( "BALLOON" ) && veh->has_part( "BALLOON" ) ) {
+        msg = _( "Cannot install more than one balloon envelope." );
+        return false;
+    }
     if( is_drive_conflict() ) {
         return false;
     }
