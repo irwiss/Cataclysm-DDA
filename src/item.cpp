@@ -8641,24 +8641,43 @@ static int get_degrade_amount( const item &it, int dmgNow_, int dmgPrev )
     return std::max( facNow_ - facPrev, 0 ) * max_dmg / degrade_increments;
 }
 
-bool item::mod_damage( int qty )
+bool item::mod_damage( int qty, bool apply_degradation )
 {
+    if( qty < 0 ) { // heal item
+        set_damage( damage_ + qty );
+        return false; // should not destroy
+    }
     if( has_flag( flag_UNBREAKABLE ) ) {
-        return false;
+        return false; // should not destroy
     }
     if( count_by_charges() ) {
         charges -= std::min( type->stack_size * qty / itype::damage_scale, charges );
         return charges == 0; // return destroy = true if no charges
-    } else {
-        const int dmg_before = damage_;
-        const bool destroy = ( damage_ + qty ) > max_damage();
-        set_damage( damage_ + qty );
-
-        if( qty > 0 && !destroy ) { // apply automatic degradation
-            set_degradation( degradation_ + get_degrade_amount( *this, damage_, dmg_before ) );
-        }
-        return destroy;
     }
+
+    const int damage_before = damage_;
+    int damage_to_apply = qty;
+    const bool destroy = ( damage_ + qty ) > max_damage();
+
+    std::set<fault_id> potential_faults = faults::faults_for_item( *this );
+    while( damage_to_apply > 0 && !potential_faults.empty() ) {
+        const fault f = *random_entry( potential_faults );
+        const int fault_damage = f.get_mod_damage();
+        faults.emplace( f.id );
+        set_damage( damage_ + fault_damage );
+        potential_faults.erase( f.id );
+        damage_to_apply -= fault_damage;
+    }
+    if( damage_to_apply > 0 ) {
+        debugmsg( "not enough faults to reach %d damage for %s; adding %d pure damage",
+                  damage_ + damage_to_apply, display_name(), damage_to_apply );
+        set_damage( damage_ + damage_to_apply );
+    }
+
+    if( apply_degradation && qty > 0 && !destroy ) { // apply automatic degradation
+        set_degradation( degradation_ + get_degrade_amount( *this, damage_, damage_before ) );
+    }
+    return destroy;
 }
 
 bool item::inc_damage()

@@ -1330,11 +1330,12 @@ class item : public visitable
         float get_relative_health() const;
 
         /**
-         * Apply damage to const itemrained by @ref min_damage and @ref max_damage
-         * @param qty maximum amount by which to adjust damage (negative permissible)
-         * @return whether item should be destroyed
+         * Apply damage to item constrained by @ref min_damage and @ref max_damage
+         * @param qty maximum amount by which to adjust damage (negative to heal item)
+         * @param auto_degradation if true applies degradation according to type->degrade_increments
+         * @returns a bool, if true the caller should destroy the item
          */
-        bool mod_damage( int qty );
+        bool mod_damage( int qty, bool apply_degradation = true );
 
         /**
          * Same as mod_damage( itype::damage_scale ), advances item to next damage level

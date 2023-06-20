@@ -17,6 +17,7 @@ template <typename T> class generic_factory;
 
 class fault;
 class fault_fix;
+class item;
 class JsonObject;
 struct requirement_data;
 
@@ -31,6 +32,9 @@ void reset();
 void finalize();
 // checks faults and fault fixes
 void check();
+
+// @returns faults that can be applied to item \p it
+std::set<fault_id> faults_for_item( const item &it );
 } // namespace faults
 
 class fault_fix
@@ -67,20 +71,24 @@ class fault
         std::string name() const;
         std::string description() const;
         std::string item_prefix() const;
+        const material_id &material_damage() const;
         int get_mod_damage() const;
         bool has_flag( const std::string &flag ) const;
 
         const std::set<fault_fix_id> &get_fixes() const;
 
     private:
-        void load( const JsonObject &jo, std::string_view );
-        void check() const;
-        bool was_loaded = false; // used by generic_factory
         friend class generic_factory<fault>;
         friend class fault_fix;
+
+        void load( const JsonObject &jo, std::string_view );
+        void check() const;
+
+        bool was_loaded = false; // used by generic_factory
         translation name_;
         translation description_;
         translation item_prefix_; // prefix added to affected item's name
+        material_id material_damage_ = material_id::NULL_ID();
         std::set<fault_fix_id> fixes;
         std::set<std::string> flags;
         int mod_damage;

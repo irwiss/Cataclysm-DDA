@@ -128,6 +128,7 @@ def process_tools(faults_path, reqs_path, fixes_path, base_data, mod_data):
             "id": f"damaged_{mat_id}",
             "name": {"str": f"Damaged {mat_name}"},
             "description": f"This item's {mat_name} parts are damaged.",
+            "material_damage": mat_id,
             "mod_damage": 1000
         }
         fault_for_mat[mat_id] = new_fault

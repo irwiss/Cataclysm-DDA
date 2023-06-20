@@ -46,6 +46,19 @@ void faults::finalize()
     reqs_temp_storage.clear();
 }
 
+std::set<fault_id> faults::faults_for_item( const item &it )
+{
+    std::set<fault_id> ret;
+    for( const fault &f : fault_factory.get_all() ) {
+        for( const material_type *mt : it.made_of_types() ) {
+            if( !it.has_fault( f.id ) && mt->id == f.material_damage() ) {
+                ret.emplace( f.id );
+            }
+        }
+    }
+    return ret;
+}
+
 void faults::check()
 {
     fault_factory.check();
@@ -95,6 +108,11 @@ std::string fault::item_prefix() const
     return item_prefix_.translated();
 }
 
+const material_id &fault::material_damage() const
+{
+    return material_damage_;
+}
+
 int fault::get_mod_damage() const
 {
     return mod_damage;
@@ -117,6 +135,7 @@ void fault::load( const JsonObject &jo, std::string_view )
     optional( jo, was_loaded, "item_prefix", item_prefix_ );
     optional( jo, was_loaded, "flags", flags );
     optional( jo, was_loaded, "mod_damage", mod_damage );
+    optional( jo, was_loaded, "material_damage", material_damage_, material_id::NULL_ID() );
 }
 
 void fault::check() const
@@ -126,6 +145,9 @@ void fault::check() const
     }
     if( description_.empty() ) {
         debugmsg( "fault '%s' has empty description", id.str() );
+    }
+    if( !material_damage_.is_valid() ) {
+        debugmsg( "fault '%s' defines invalid material %s", id.str(), material_damage_.str() );
     }
 }
 
