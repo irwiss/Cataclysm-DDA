@@ -55,6 +55,7 @@
     "broken_symbol": "y",
     "color": "red",
     "durability": 400,
+    "fuels": [ "propane" ],
     "requirements": {
       "install": { "skills": [ [ "mechanics", 1 ] ], "time": "2 m", "using": [ [ "vehicle_wrench_2", 1 ] ] },
       "removal": { "skills": [ [ "mechanics", 1 ] ], "time": "1 m", "using": [ [ "vehicle_wrench_2", 1 ] ] },

@@ -5402,32 +5402,47 @@ void vehicle::idle( bool on_map )
     }
 }
 
-bool vehicle::has_burner_fuel() const
+std::optional<vpart_reference> vehicle::get_ballon_burner( bool fueled )
 {
-    itype_id most_fuel = itype_id::NULL_ID();
-    int most_fuel_amount = 0;
-    for( const auto &p : parts ) {
-        if( p.is_fuel_store() && is_burner_fuel( p.ammo_current() ) &&
-            p.ammo_remaining() > most_fuel_amount ) {
-            most_fuel = p.ammo_current();
-            most_fuel_amount = p.ammo_remaining();
+    for( const vehicle_part &vp : parts ) {
+        const vpart_info &vpi = vp.info();
+        if( !vpi.balloon_burner_info ) {
+            continue;
+        }
+        for( const itype_id &fuel : vpi.balloon_burner_info->fuels ) {
+            if( !fueled || fuel_left( fuel ) > 0 ) {
+                return vpart_reference( *this, index_of_part( &vp ) );
+            }
         }
     }
-    if( most_fuel == itype_id::NULL_ID() || most_fuel_amount < 50 ) {
-        return false;
+    return std::nullopt;
+}
+
+itype_id vehicle::get_balloon_burner_fuel()
+{
+    const std::optional<vpart_reference> ovp_burner = get_ballon_burner( false );
+    if( !ovp_burner ) {
+        return itype_id::NULL_ID();
     }
-    return true;
+    vehicle_part &vp_burner = ovp_burner->part();
+    itype_id most_fuel = itype_id::NULL_ID();
+    int most_fuel_amount = 0;
+    for( const itype_id &fuel : vp_burner.info().balloon_burner_info->fuels ) {
+        const int64_t fuel_amount = fuel_left( fuel );
+        if( fuel_amount > most_fuel_amount ) {
+            most_fuel = fuel;
+            most_fuel_amount = static_cast<int>( fuel_amount );
+        }
+    }
+    return most_fuel;
 }
 
 void vehicle::balloon_vertical_movement()
 {
-    bool out_of_fuel = false;
-    if( !has_burner_fuel() ) {
-        out_of_fuel = true;
-        add_msg( _( "The burner is out of fuel!" ) );
-    }
-    const bool burner_enabled = has_part( "BALLOON_BURNER", true ) && !out_of_fuel;
-    if( ( desired_altitude > sm_pos.z || desired_altitude == sm_pos.z ) && burner_enabled ) {
+    const std::optional<vpart_reference> ovp_burner = get_ballon_burner( /* fueled = */ false );
+    const std::optional<vpart_reference> ovp_burner_fueled = get_ballon_burner( /* fueled = */ true );
+    const bool burner_enabled = ovp_burner_fueled.has_value() && ovp_burner_fueled->part().enabled;
+    if( burner_enabled && ( desired_altitude > sm_pos.z || desired_altitude == sm_pos.z ) ) {
         time_duration time_between_burns = 1_minutes;
         if( desired_altitude == sm_pos.z ) {
             // maintain altitude
@@ -5443,10 +5458,10 @@ void vehicle::balloon_vertical_movement()
             } else {
                 requested_z_change = 0;
             }
-            for( vehicle_part &p : parts ) {
-                if( p.is_fuel_store() && is_burner_fuel( p.ammo_current() ) && p.ammo_remaining() >= 50 ) {
-                    p.ammo_consume( 50, global_part_pos3( p ) );
-                }
+            const itype_id fuel_type = get_balloon_burner_fuel();
+            if( drain( fuel_type, 50 ) < 50 ) {
+                ovp_burner->part().enabled = false;
+                add_msg( _( "The burner is out of fuel!" ) );
             }
         }
     } else if( !check_is_heli_landed() ) {
@@ -7297,16 +7312,6 @@ std::map<itype_id, int> vehicle::fuels_left() const
         }
     }
     return result;
-}
-
-bool vehicle::is_burner_fuel( itype_id fuel ) const
-{
-    return fuel == itype_id( "gasoline" ) ||
-           fuel == itype_id( "diesel" ) ||
-           fuel == itype_id( "lamp_oil" ) ||
-           fuel == itype_id( "jp8" ) ||
-           fuel == itype_id( "motor_oil" ) ||
-           fuel == itype_id( "avgas" );
 }
 
 std::list<item *> vehicle::fuel_items_left()

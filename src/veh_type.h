@@ -141,6 +141,10 @@ struct vpslot_balloon {
     units::volume balloon_volume = 0_ml;
 };
 
+struct vpslot_balloon_burner {
+    std::vector<itype_id> fuels;
+};
+
 struct vpslot_rotor {
     int rotor_diameter = 1;
 };
@@ -232,6 +236,8 @@ class vpart_info
 {
     public:
         static void load_balloon( std::optional<vpslot_balloon> &balptr, const JsonObject &jo );
+        static void load_balloon_burner( std::optional<vpslot_balloon_burner> &burner_ptr,
+                                         const JsonObject &jo );
         static void load_engine( std::optional<vpslot_engine> &eptr, const JsonObject &jo,
                                  const itype_id &fuel_type );
         static void load_wheel( std::optional<vpslot_wheel> &whptr, const JsonObject &jo );
@@ -359,7 +365,6 @@ class vpart_info
         // time required to unfold this part
         time_duration unfolding_time = time_duration::from_seconds( 10 );
 
-        std::optional<vpslot_balloon> balloon_info;
         std::optional<vpslot_engine> engine_info;
         std::optional<vpslot_wheel> wheel_info;
         std::optional<vpslot_rotor> rotor_info;
@@ -410,6 +415,9 @@ class vpart_info
 
         /* Contains data for terrain transformer parts */
         transform_terrain_data transform_terrain;
+
+        std::optional<vpslot_balloon> balloon_info;
+        std::optional<vpslot_balloon_burner> balloon_burner_info;
 
         /** Fuel type of engine or tank */
         itype_id fuel_type = itype_id::NULL_ID();

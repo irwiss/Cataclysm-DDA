@@ -1620,9 +1620,10 @@ class vehicle
         // Balloons
         units::mass lift_of_balloon() const;
         bool has_sufficient_balloon_lift() const;
-        bool has_burner_fuel() const;
-        bool is_burner_fuel( itype_id fuel ) const;
-        void control_burner( int burner );
+        // @param fueled if true only returns burners with one of the available
+        // @returns balloon burner part if exists
+        std::optional<vpart_reference> get_ballon_burner( bool fueled = true );
+        itype_id get_balloon_burner_fuel();
         bool is_hot_air_balloon() const;
         void wind_movement();
         void balloon_vertical_movement();
@@ -2016,7 +2017,7 @@ class vehicle
         void use_harness( int part, const tripoint &pos );
 
         void build_electronics_menu( veh_menu &menu );
-        void build_balloon_burner_menu( veh_menu &menu, int part );
+        void build_balloon_burner_menu( veh_menu &menu );
         void build_bike_rack_menu( veh_menu &menu, int part );
         void build_interact_menu( veh_menu &menu, const tripoint &p, bool with_pickup );
         void interact_with( const tripoint &p, bool with_pickup = false );

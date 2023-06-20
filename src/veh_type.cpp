@@ -273,6 +273,18 @@ void vpart_info::load_balloon( std::optional<vpslot_balloon> &balptr, const Json
     cata_assert( balptr );
 }
 
+void vpart_info::load_balloon_burner( std::optional<vpslot_balloon_burner> &burner_ptr,
+                                      const JsonObject &jo )
+{
+    vpslot_balloon_burner burner_info{};
+    if( burner_ptr ) {
+        burner_info = *burner_ptr;
+    }
+    assign( jo, "fuels", burner_info.fuels );
+    burner_ptr = burner_info;
+    cata_assert( burner_ptr );
+}
+
 void vpart_info::load_wheel( std::optional<vpslot_wheel> &whptr, const JsonObject &jo )
 {
     vpslot_wheel wh_info{};
@@ -483,6 +495,10 @@ void vpart_info::load( const JsonObject &jo, const std::string &src )
     }
 
     if( def.has_flag( "BALLOON" ) ) {
+        load_balloon( def.balloon_info, jo );
+    }
+
+    if( def.has_flag( "BALLOON_BURNER" ) ) {
         load_balloon( def.balloon_info, jo );
     }
 

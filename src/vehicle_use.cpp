@@ -1601,9 +1601,10 @@ void vehicle::build_bike_rack_menu( veh_menu &menu, int part )
     }
 }
 
-void vehicle::build_balloon_burner_menu( veh_menu &menu, int part )
+void vehicle::build_balloon_burner_menu( veh_menu &menu )
 {
-    if( !has_burner_fuel() ) {
+    const std::optional<vpart_reference> ovp_burner = get_ballon_burner( /* fueled = */ true );
+    if( !ovp_burner ) {
         menu.add( string_format( _( "Balloon burner is out of fuel" ) ) )
         .enable( false )
         .skip_locked_check();
@@ -1611,8 +1612,8 @@ void vehicle::build_balloon_burner_menu( veh_menu &menu, int part )
     }
     menu.add( string_format( _( "Set desired altitude for balloon flight" ) ) )
     .hotkey_auto()
-    .on_submit( [this, part] {
-        vehicle_part &burner = parts[part];
+    .on_submit( [this, ovp_burner] {
+        vehicle_part &burner = ovp_burner->part();
         const int altitude = string_input_popup()
         .title( _( "Select a desired altitude: ( 0 - 9 )" ) )
         .width( 20 )
@@ -1898,9 +1899,8 @@ void vehicle::build_interact_menu( veh_menu &menu, const tripoint &p, bool with_
         }
     }
 
-    const std::optional<vpart_reference> vp_burner = vp.avail_part_with_feature( "BALLOON_BURNER" );
-    if( vp_burner ) {
-        build_balloon_burner_menu( menu, vp_burner->part_index() );
+    if( get_ballon_burner( /* fueled = */ false ) ) {
+        build_balloon_burner_menu( menu );
     }
 
     if( controls_here && has_part( "AUTOPILOT" ) && has_electronic_controls ) {
