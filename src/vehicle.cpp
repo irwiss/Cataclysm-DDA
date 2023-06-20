@@ -4136,18 +4136,16 @@ double vehicle::lift_thrust_of_rotorcraft( const bool fuelled, const bool safe )
     return lift_thrust * 4.45;
 }
 
-static double air_density( units::temperature temperature, int humidity, int pressure, bool dry )
+static double air_density( units::temperature temperature, double humidity, double pressure )
 {
     // saturation vapor pressure of surrounding air.
-    int local_humidity = dry ? 0 : humidity;
-    const double local_temp_kelvin = units::to_kelvin( temperature );
-    const double local_temp_celsius = units::to_celsius( temperature );
-    const double saturation_pressure = 6.1078 * pow( 10,
-                                       ( 7.5 * local_temp_celsius / ( local_temp_celsius + 237.3 ) ) );
-    const double actual_vapor_pressure = saturation_pressure * ( local_humidity / 100.0 );
+    const double kelvin = units::to_kelvin( temperature );
+    const double celsius = units::to_celsius( temperature );
+    const double saturation_pressure = 6.1078 * pow( 10, 7.5 * celsius / ( celsius + 237.3 ) );
+    const double actual_vapor_pressure = saturation_pressure * humidity / 100.0;
     const double dry_pressure = pressure - actual_vapor_pressure;
-    const double density = ( dry_pressure / ( 287.0 * local_temp_kelvin ) )
-                           + ( actual_vapor_pressure / ( 461.0 * local_temp_kelvin ) );
+    const double density = ( dry_pressure / ( 287.0 * kelvin ) )
+                           + ( actual_vapor_pressure / ( 461.0 * kelvin ) );
     // convert to kg/m3
     return density * 100.0;
 }
@@ -4172,17 +4170,13 @@ units::mass vehicle::lift_of_balloon() const
     if( total_volume == 0_ml ) {
         return 0_kilogram;
     }
-    // assume max operating temp for a balloon
-    // assume player heats it to this temp, when they want to climb.
-    const units::temperature total_temp = units::from_fahrenheit( 250 );
+    // assume max operating temp for a balloon, player heats it to this temp, when they want to climb.
+    const units::temperature hot_air_temp = units::from_fahrenheit( 250 );
     const tripoint_abs_ms wpos( get_map().getabs( pos_bub() ) );
     const w_point wdata = get_weather().get_cur_weather_gen()
                           .get_weather( wpos, calendar::turn, g->get_seed() );
-    const units::temperature local_temp = wdata.temperature;
-    const int local_humidity = static_cast<int>( wdata.humidity );
-    const int local_pressure = static_cast<int>( wdata.pressure );
-    const double density_outside = air_density( local_temp, local_humidity, local_pressure, false );
-    const double density_inside = air_density( total_temp, local_humidity, local_pressure, true );
+    const double density_outside = air_density( wdata.temperature, wdata.humidity, wdata.pressure );
+    const double density_inside = air_density( hot_air_temp, /* dry air = */ 0, wdata.pressure );
     const double density_difference = density_outside - density_inside; // kg/m3
     // volume (m3) * density difference (kg/m3) = the lifted mass (kg)
     return units::from_kilogram( units::to_liter( total_volume ) * density_difference );
