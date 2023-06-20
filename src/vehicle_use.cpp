@@ -1898,7 +1898,7 @@ void vehicle::build_interact_menu( veh_menu &menu, const tripoint &p, bool with_
         }
     }
 
-    const std::optional<vpart_reference> vp_burner = vp.avail_part_with_feature( "BURNER" );
+    const std::optional<vpart_reference> vp_burner = vp.avail_part_with_feature( "BALLOON_BURNER" );
     if( vp_burner ) {
         build_balloon_burner_menu( menu, vp_burner->part_index() );
     }

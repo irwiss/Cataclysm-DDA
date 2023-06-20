@@ -36,9 +36,10 @@
     "info": "You can install a seat belt or five part harness here to help keep you in your seat during a collision."
   },
   {
-    "id": "BURNER",
+    "id": "BALLOON_BURNER",
     "type": "json_flag",
-    "//": "flag for balloon burner vehicle parts"
+    "//": "flag for balloon burner vehicle parts",
+    "requires_flag": "BALLOON"
   },
   {
     "id": "CABLE_PORTS",

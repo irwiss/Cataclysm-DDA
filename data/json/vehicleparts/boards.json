@@ -146,7 +146,7 @@
     "extend": { "flags": [ "OPAQUE", "FULL_BOARD" ] }
   },
   {
-    "abstract": "cloth_halfboard",
+    "id": "cloth_halfboard",
     "copy-from": "clothboard_abstract",
     "type": "vehicle_part",
     "name": { "str": "cloth quarterpanel" },

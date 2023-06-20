@@ -4201,7 +4201,7 @@ bool vehicle::is_rotorcraft() const
 
 bool vehicle::is_hot_air_balloon() const
 {
-    return has_part( "BALLOON" ) && has_part( "BURNER" ) && has_sufficient_balloon_lift();
+    return has_part( "BALLOON" ) && has_part( "BALLOON_BURNER" ) && has_sufficient_balloon_lift();
 }
 
 bool vehicle::is_airworthy() const
@@ -5426,7 +5426,7 @@ void vehicle::balloon_vertical_movement()
         out_of_fuel = true;
         add_msg( _( "The burner is out of fuel!" ) );
     }
-    const bool burner_enabled = has_part( "BURNER", true ) && !out_of_fuel;
+    const bool burner_enabled = has_part( "BALLOON_BURNER", true ) && !out_of_fuel;
     if( ( desired_altitude > sm_pos.z || desired_altitude == sm_pos.z ) && burner_enabled ) {
         time_duration time_between_burns = 1_minutes;
         if( desired_altitude == sm_pos.z ) {

@@ -53,7 +53,6 @@
     "symbol": ";",
     "material": [ "steel" ],
     "volume": "7500 ml",
-    "bashing": 5,
     "price": 1200
   }
 ]
