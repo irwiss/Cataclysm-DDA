@@ -1327,11 +1327,11 @@ bool vehicle::check_is_heli_landed()
     return false;
 }
 
-std::pair<bool, std::string> vehicle::check_aircraft_descend( bool only_stationary_landing ) const
+ret_val<void> vehicle::check_aircraft_descend( bool only_stationary_landing ) const
 {
     if( !is_airworthy() ) {
         debugmsg( "vehicle is somehow flying without being an aircraft" );
-        return std::make_pair( false, "BUG" );
+        return ret_val<void>::make_failure( "BUG" );
     }
     int count = 0;
     int air_count = 0;
@@ -1340,12 +1340,12 @@ std::pair<bool, std::string> vehicle::check_aircraft_descend( bool only_stationa
     for( const tripoint &pt : get_points( true ) ) {
         tripoint below( pt.xy(), pt.z - 1 );
         if( pt.z < -OVERMAP_DEPTH || !here.has_flag_ter_or_furn( ter_furn_flag::TFLAG_NO_FLOOR, pt ) ) {
-            return std::make_pair( false, _( "You are already landed!" ) );
+            return ret_val<void>::make_failure( _( "You are already landed!" ) );
         }
         const optional_vpart_position ovp = here.veh_at( below );
         if( here.impassable_ter_furn( below ) || ovp || creatures.creature_at( below ) ) {
-            return std::make_pair( false,
-                                   _( "It would be unsafe to try and land when there are obstacles below you." ) );
+            return ret_val<void>::make_failure(
+                       _( "It would be unsafe to try and land when there are obstacles below you." ) );
         }
         if( here.has_flag_ter_or_furn( ter_furn_flag::TFLAG_NO_FLOOR, below ) ) {
             air_count++;
@@ -1353,23 +1353,25 @@ std::pair<bool, std::string> vehicle::check_aircraft_descend( bool only_stationa
         count++;
     }
     if( velocity > 0 && air_count != count ) {
-        return std::make_pair( false, _( "It would be unsafe to try and land while you are moving." ) );
+        return ret_val<void>::make_failure(
+                   _( "It would be unsafe to try and land while you are moving." ) );
     }
-    return std::make_pair( true, "" );
+    return ret_val<void>::make_success();
 }
 
-std::pair<bool, std::string> vehicle::check_aircraft_ascend() const
+ret_val<void> vehicle::check_aircraft_ascend() const
 {
     if( !is_airworthy() ) {
         debugmsg( "vehicle is somehow flying without being an aircraft" );
-        return std::make_pair( false, "BUG" );
+        return ret_val<void>::make_failure( "BUG" );
     }
     if( velocity > 0 && !is_flying_in_air() ) {
-        return std::make_pair( false, _( "It would be unsafe to try and take off while you are moving." ) );
+        return ret_val<void>::make_failure(
+                   _( "It would be unsafe to try and take off while you are moving." ) );
     }
     if( sm_pos.z + 1 >= OVERMAP_HEIGHT ) {
         // don't allow trying to ascend to max zlevel or lightmap lookup causes a crash
-        return std::make_pair( false, _( "You are already at maximum altitude." ) );
+        return ret_val<void>::make_failure( _( "You are already at maximum altitude." ) );
     }
     map &here = get_map();
     creature_tracker &creatures = get_creature_tracker();
@@ -1380,11 +1382,11 @@ std::pair<bool, std::string> vehicle::check_aircraft_ascend() const
             here.impassable_ter_furn( above ) ||
             ovp ||
             creatures.creature_at( above ) ) {
-            return std::make_pair( false,
-                                   _( "It would be unsafe to try and ascend when there are obstacles above you." ) );
+            return ret_val<void>::make_failure(
+                       _( "It would be unsafe to try and ascend when there are obstacles above you." ) );
         }
     }
-    return std::make_pair( true, "" );
+    return ret_val<void>::make_success();
 }
 
 void vehicle::pldrive( Character &driver, const point &p, int z )

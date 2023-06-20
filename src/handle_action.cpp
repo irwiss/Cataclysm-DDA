@@ -526,16 +526,16 @@ static void pldrive( const tripoint &p )
         }
     }
     if( p.z == -1 ) {
-        const std::pair<bool, std::string> check_descend = veh->check_aircraft_descend( true );
-        if( !check_descend.first ) {
-            player_character.add_msg_if_player( m_info, "%s", check_descend.second );
+        const ret_val<void> check_descend = veh->check_aircraft_descend( true );
+        if( !check_descend.success() ) {
+            player_character.add_msg_if_player( m_info, "%s", check_descend.str() );
             return;
         }
         player_character.add_msg_if_player( m_info, _( "You steer the vehicle into an ascent." ) );
     } else if( p.z == 1 ) {
-        const std::pair<bool, std::string> check_ascend = veh->check_aircraft_ascend();
-        if( !check_ascend.first ) {
-            player_character.add_msg_if_player( m_info, "%s", check_ascend.second );
+        const ret_val<void> check_ascend = veh->check_aircraft_ascend();
+        if( !check_ascend.success() ) {
+            player_character.add_msg_if_player( m_info, "%s", check_ascend.str() );
             return;
         }
         player_character.add_msg_if_player( m_info, _( "You steer the vehicle into an ascent." ) );

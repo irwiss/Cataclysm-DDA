@@ -1627,8 +1627,8 @@ class vehicle
         void wind_movement();
         void balloon_vertical_movement();
         bool is_airworthy() const;
-        std::pair<bool, std::string> check_aircraft_descend( bool only_stationary_landing = false ) const;
-        std::pair<bool, std::string> check_aircraft_ascend() const;
+        ret_val<void> check_aircraft_descend( bool only_stationary_landing = false ) const;
+        ret_val<void> check_aircraft_ascend() const;
         int desired_altitude = 0;
 
         // Would interacting with this part prevent the vehicle from being flyable?

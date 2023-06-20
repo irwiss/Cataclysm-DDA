@@ -5435,12 +5435,10 @@ void vehicle::balloon_vertical_movement()
         }
         if( calendar::once_every( time_between_burns ) ) {
             if( desired_altitude > sm_pos.z ) {
-                std::pair<bool, std::string> check_ascend = check_aircraft_ascend();
-                if( check_ascend.first ) {
+                const ret_val<void> check_ascend = check_aircraft_ascend();
+                if( check_ascend.success() ) {
                     requested_z_change = 1;
-                    if( !is_flying ) {
-                        is_flying = true;
-                    }
+                    is_flying = true;
                 }
             } else {
                 requested_z_change = 0;
@@ -5452,15 +5450,15 @@ void vehicle::balloon_vertical_movement()
             }
         }
     } else if( !check_is_heli_landed() ) {
-        std::pair<bool, std::string> check = check_aircraft_descend();
+        const ret_val<void> check = check_aircraft_descend();
         if( desired_altitude < sm_pos.z ) {
             requested_z_change = 0;
-            if( calendar::once_every( 1_minutes ) && check.first ) {
+            if( calendar::once_every( 1_minutes ) && check.success() ) {
                 requested_z_change = -1;
             }
         } else if( !burner_enabled ) {
             requested_z_change = 0;
-            if( calendar::once_every( 5_minutes ) && check.first ) {
+            if( calendar::once_every( 5_minutes ) && check.success() ) {
                 requested_z_change = -1;
             }
         }
