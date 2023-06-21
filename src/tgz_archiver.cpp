@@ -65,7 +65,7 @@ bool tgz_archiver::add_file( fs::path const &real_path, fs::path const &archived
     if( archived_path.filename().generic_u8string().size() > 100 ||
         prefix_len > 150 ) {
         DebugLog( DebugLevel::D_WARNING, DebugClass::D_MAIN )
-                << "file skipped (path too long): " << archived_path << std::endl;
+                << "file skipped (path too long): " << archived_path;
         return false;
     }
 

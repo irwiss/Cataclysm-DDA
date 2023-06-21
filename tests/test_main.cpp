@@ -384,7 +384,7 @@ int main( int argc, const char *argv[] )
 
     bool error_during_initialization = debug_has_error_been_observed();
 
-    DebugLog( D_INFO, DC_ALL ) << "Game data loaded, running Catch2 session:" << std::endl;
+    DebugLog( D_INFO, DC_ALL ) << "Game data loaded, running Catch2 session:";
     const std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
     result = session.run();
     const std::chrono::system_clock::time_point end = std::chrono::system_clock::now();
@@ -406,7 +406,7 @@ int main( int argc, const char *argv[] )
 
     if( seed ) {
         // Also print the seed at the end so it can be easily found
-        DebugLog( D_INFO, DC_ALL ) << "Randomness seeded to: " << seed << std::endl;
+        DebugLog( D_INFO, DC_ALL ) << "Randomness seeded to: " << seed;
     }
 
     if( error_during_initialization ) {

@@ -210,8 +210,31 @@ void replay_buffered_debugmsg_prompts();
 // Debug Only                                                       {{{1
 // ---------------------------------------------------------------------
 
+class LogWrapper
+{
+    public:
+        explicit LogWrapper( std::ostream &os ) : os( os ) {}
+
+        template<typename T>
+        LogWrapper &operator<<( const T &rhs ) {
+            os << rhs;
+            return *this;
+        }
+
+        std::ostream &get_stream() {
+            return os;
+        }
+
+        ~LogWrapper() {
+            os << std::endl;
+        }
+
+    private:
+        std::ostream &os;
+};
+
 // See documentation at the top.
-std::ostream &DebugLog( DebugLevel, DebugClass );
+LogWrapper DebugLog( DebugLevel, DebugClass );
 
 /**
  * Extended debugging mode, can be toggled during game.

@@ -414,16 +414,10 @@ struct time_info {
     int seconds;
     int mseconds;
 
-    template <typename Stream>
-    friend Stream &operator<<( Stream &out, const time_info &t ) {
-        using char_t = typename Stream::char_type;
-        using base   = std::basic_ostream<char_t>;
-
-        static_assert( std::is_base_of<base, Stream>::value );
-
-        out << std::setfill( '0' );
-        out << std::setw( 2 ) << t.hours << ':' << std::setw( 2 ) << t.minutes << ':' <<
-            std::setw( 2 ) << t.seconds << '.' << std::setw( 3 ) << t.mseconds;
+    friend std::ostream &operator<<( std::ostream &out, const time_info &t ) {
+        out << std::setfill( '0' )
+            << std::setw( 2 ) << t.hours << ':' << std::setw( 2 ) << t.minutes << ':'
+            << std::setw( 2 ) << t.seconds << '.' << std::setw( 3 ) << t.mseconds;
 
         return out;
     }
@@ -507,8 +501,7 @@ void realDebugmsg( const char *filename, const char *line, const char *funcname,
     } else {
 
         if( !rep_folder.test( filename, line, funcname, text ) ) {
-            DebugLog( D_ERROR, D_MAIN ) << filename << ":" << line << " [" << funcname << "] " << text <<
-                                        std::flush;
+            DebugLog( D_ERROR, D_MAIN ) << filename << ":" << line << " [" << funcname << "] " << text;
             rep_folder.set( filename, line, funcname, text );
         } else {
             rep_folder.increment_count();
@@ -649,9 +642,8 @@ void DebugFile::deinit()
 {
     if( file && file.get() != &std::cerr ) {
         output_repetitions( *file );
-        *file << "\n";
-        *file << get_time() << " : Log shutdown.\n";
-        *file << "-----------------------------------------\n\n";
+        DebugLog( D_INFO, D_MAIN ) << "Log shutdown.";
+        DebugLog( D_INFO, D_MAIN ) << "-----------------------------------------\n\n";
     }
     file.reset();
 }
@@ -686,15 +678,13 @@ void DebugFile::init( DebugOutput output_mode, const std::string &filename )
             }
             file = std::make_shared<std::ofstream>(
                        fs::u8path( filename ), std::ios::out | std::ios::app );
-            *file << "\n\n-----------------------------------------\n";
-            *file << get_time() << " : Starting log.";
+            DebugLog( D_INFO, D_MAIN ) << "-----------------------------------------";
+            DebugLog( D_INFO, D_MAIN ) << "Starting log.";
             DebugLog( D_INFO, D_MAIN ) << "Cataclysm DDA version " << getVersionString();
             if( rename_failed ) {
-                DebugLog( D_ERROR, DC_ALL ) << "Moving the previous log file to "
-                                            << oldfile << " failed.\n"
-                                            << "Check the file permissions.  This "
-                                            "program will continue to use the "
-                                            "previous log file.";
+                DebugLog( D_ERROR, DC_ALL )
+                        << "Moving the previous log file to " << oldfile << " failed.  Check the file "
+                        "permissions.  This program will continue to use the previous log file.";
             }
         }
         break;
@@ -770,13 +760,13 @@ static std::ostream &operator<<( std::ostream &out, DebugLevel lev )
 {
     if( lev != DL_ALL ) {
         if( lev & D_INFO ) {
-            out << "INFO ";
+            out << "INFO     ";
         }
         if( lev & D_WARNING ) {
-            out << "WARNING ";
+            out << "WARNING  ";
         }
         if( lev & D_ERROR ) {
-            out << "ERROR ";
+            out << "ERROR    ";
         }
         if( lev & D_PEDANTIC_INFO ) {
             out << "PEDANTIC ";
@@ -1403,21 +1393,17 @@ void output_repetitions( std::ostream &out )
     // Need to complete the folding
     if( rep_folder.repeat_count > 0 ) {
         if( rep_folder.repeat_count > 1 ) {
-            out << std::endl;
             out << "[ Previous repeated " << ( rep_folder.repeat_count - 1 ) << " times ]";
         }
-        out << std::endl;
-        out << rep_folder.m_time << " ";
         // repetition folding is only done through DebugLog( D_ERROR, D_MAIN )
-        out << D_ERROR;
-        out << ": ";
-        out << rep_folder.m_filename << ":" << rep_folder.m_line << " [" << rep_folder.m_funcname << "] " <<
-            rep_folder.m_text << std::flush;
+        out << rep_folder.m_time << " " << D_ERROR << ": "
+            << rep_folder.m_filename << ":" << rep_folder.m_line
+            << " [" << rep_folder.m_funcname << "] " << rep_folder.m_text;
         rep_folder.reset();
     }
 }
 
-std::ostream &DebugLog( DebugLevel lev, DebugClass cl )
+LogWrapper DebugLog( DebugLevel lev, DebugClass cl )
 {
     if( lev & D_ERROR ) {
         error_observed = true;
@@ -1426,13 +1412,11 @@ std::ostream &DebugLog( DebugLevel lev, DebugClass cl )
     // Error are always logged, they are important,
     // Messages from D_MAIN come from debugmsg and are equally important.
     if( ( lev & debugLevel && cl & debugClass ) || lev & D_ERROR || cl & D_MAIN ) {
-        std::ostream &out = debugFile().get_file();
+        LogWrapper out( debugFile().get_file() );
 
-        output_repetitions( out );
+        output_repetitions( out.get_stream() );
 
-        out << std::endl;
-        out << get_time() << " ";
-        out << lev;
+        out << get_time() << " " << lev;
         if( cl != debugClass ) {
             out << cl;
         }
@@ -1445,11 +1429,11 @@ std::ostream &DebugLog( DebugLevel lev, DebugClass cl )
         time_t now = time( nullptr );
         if( lev == D_ERROR && now >= next_backtrace ) {
             out << "(error message will follow backtrace)";
-            debug_write_backtrace( out );
+            debug_write_backtrace( out.get_stream() );
             time_t after = time( nullptr );
             // Cool down for 60s between backtrace emissions.
             next_backtrace = after + 60;
-            out << "Backtrace emission took " << after - now << " seconds." << std::endl;
+            out << "Backtrace emission took " << after - now << " seconds.\n";
             out << "(continued from above) " << lev << ": ";
         }
 #endif
@@ -1458,7 +1442,8 @@ std::ostream &DebugLog( DebugLevel lev, DebugClass cl )
     }
 
     static NullStream null_stream;
-    return null_stream;
+    static LogWrapper null_wrapper( null_stream );
+    return null_wrapper;
 }
 
 std::string game_info::operating_system()
