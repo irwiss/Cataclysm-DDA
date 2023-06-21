@@ -3156,6 +3156,7 @@ bool game::load( const save_t &name )
         ui.proceed();
     }
 
+    DebugLog( D_INFO, DC_ALL ) << "World loaded.\n" << game_info::game_report();
     return true;
 }
 
