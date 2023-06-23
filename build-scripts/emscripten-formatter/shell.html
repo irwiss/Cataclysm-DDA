@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en-us">
+    <head>
+        <meta charset="utf-8">
+        <style type="text/css">
+/* don't blind users */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --bg: #333;
+    --text: #eee;
+    --textarea: #222;
+    --bad-json-alert: #c30;
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color-scheme: light;
+    --bg: #888;
+    --text: #111;
+    --textarea: #aaa;
+    --bad-json-alert: #c30;
+  }
+}
+
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    color: var(--text);
+    background-color: var(--bg);
+}
+body {
+    display: flex;
+    flex-flow: column;
+}
+h1 {
+    text-align: center;
+}
+.row {
+    flex: 1;
+    display: flex;
+    flex-flow: row;
+}
+.col {
+    flex: 1;
+    display: flex;
+    flex-flow: column;
+    margin: 16px;
+}
+label {
+    font-weight: bold;
+    padding-left: 1em;
+}
+textarea {
+    flex: 1;
+    display: block;
+    margin: 0;
+    padding: 8px;
+    border: 1px solid;
+    resize: none;
+    background-color: var(--textarea);
+}
+
+#json_error_alert {
+    font-size: larger;
+    font-weight: bold;
+    text-align: center;
+    background-color: var(--bad-json-alert);
+    padding: 16px;
+    display: none;
+}
+        </style>
+    </head>
+<body>
+    <section>
+    </section>
+    <div class="row">
+        <div class="col">
+            <label for="json_input">Input JSON (Paste here)</label>
+            <textarea id="json_input" label="Input JSON">
+[
+    "paste your unformatted json into left side", "and copy it formatted from the right side"
+]</textarea>
+            <span id="json_error_alert">Bad JSON, you need to fix it before formatting!</span>
+        </div>
+        <div class="col">
+            <label for="json_output">Formatted JSON (Copy from here)</label>
+            <textarea id="json_output" label="Formatted JSON" readonly>
+Hold up, formatter is loading
+This requires javascript enabled in your browser
+</textarea>
+        </div>
+    </div>
+    {{{ SCRIPT }}}
+    <script type="text/javascript" async>
+
+json_formatter().then(module => {
+    console.log('json_formatter module loaded');
+
+    let json_format = module.cwrap('json_format', 'string', ['string'])
+
+    let json_input = document.getElementById("json_input")
+    let json_output = document.getElementById("json_output")
+    let json_error_alert = document.getElementById("json_error_alert")
+
+    json_input.oninput = function() {
+        let formatted = json_format(json_input.value);
+        json_output.value = formatted;
+        json_error_alert.style.display = formatted.startsWith("Json error")
+            ? "block" : "none";
+    }
+    json_input.oninput.call()
+});
+
+</script>
+</body>
+</html>

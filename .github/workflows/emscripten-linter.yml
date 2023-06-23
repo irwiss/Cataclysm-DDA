@@ -1,0 +1,25 @@
+name: Emscripten linter build
+
+on: workflow_dispatch
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: checkout repository
+      uses: actions/checkout@v3
+    - name: install dependencies (ubuntu)
+      run: |
+          sudo apt-get update
+          sudo apt-get install emscripten
+    - name: build emscripten page
+      run: bash ./build-scripts/emscripten-formatter/build.sh
+    - name: list
+      run: ls -la formatter.html
+    - name: upload artifacts
+      uses: actions/upload-artifact@v3.1.2
+      with:
+        name: formatter
+        path: formatter.html
