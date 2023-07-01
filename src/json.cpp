@@ -18,6 +18,12 @@
 #include <utility>
 #include <vector>
 
+#if defined(_MSC_VER)
+#include <io.h>
+#else
+#include <unistd.h>
+#endif
+
 #include "cached_options.h"
 #include "cata_scope_helpers.h"
 #include "cata_utility.h"
@@ -1897,6 +1903,33 @@ void TextJsonIn::error( const std::string &message )
 
 void TextJsonIn::error( int offset, const std::string &message )
 {
+#if defined(_MSC_VER)
+    const bool supports_color = _isatty( _fileno( stdout ) );
+#else
+    const bool supports_color = isatty( STDOUT_FILENO );
+#endif
+#if defined(CATA_IN_TOOL)
+    const bool in_tool = true;
+#else
+    // also check if we're running in a github action
+    const bool in_tool = std::getenv( "GITHUB_ACTIONS" );
+#endif
+
+    // otherwise debugmsg will handle color tags in both curses and SDL builds
+    std::string color_normal = "<color_white>";
+    std::string color_error = "<color_light_red>";
+    std::string color_highlight = "<color_cyan>";
+    std::string color_end = "</color>";
+
+    if( in_tool ) {
+        // output ANSI colors for github actions or terminal unless
+        // error_log_json_force_no_color is true or stdout is redirected
+        color_normal = supports_color ? "\033[0m" : "";
+        color_error = supports_color ? "\033[0;31m" : "";
+        color_highlight = supports_color ? "\033[0;36m" : "";
+        color_end = supports_color ? "\033[0m" : "";
+    }
+
     std::ostringstream err_header;
     switch( error_log_format ) {
         case error_log_format_t::human_readable:
@@ -1917,57 +1950,58 @@ void TextJsonIn::error( int offset, const std::string &message )
         stream->seekg( 0, std::istream::end );
     } );
     std::ostringstream err;
-    err << message;
-    // also print surrounding few lines of context, if not too large
+    err << color_normal;
+    err << color_highlight << message << color_end;
+    const int max_context_lines = 3;   // limits context length to this many lines
+    const int max_context_chars = 480; // limits context length to this many chars
     err << "\n\n";
     stream->seekg( offset, std::istream::cur );
-    size_t pos = tell();
-    rewind( 3, 240 );
-    size_t startpos = tell();
-    std::string buffer( pos - startpos, '\0' );
-    stream->read( buffer.data(), pos - startpos );
-    auto it = buffer.begin();
-    for( ; it < buffer.end() && ( *it == '\r' || *it == '\n' ); ++it ) {
-        // skip starting newlines
-    }
-    for( ; it < buffer.end(); ++it ) {
-        if( *it == '\r' ) {
-            err << '\n';
-            if( it + 1 < buffer.end() && *( it + 1 ) == '\n' ) {
-                ++it;
+    // remember positions of several places to print a few lines of context
+    const size_t cursor_pos = tell();               // exact position of error
+    rewind( 1, max_context_chars );                 // rewind to start of line
+    const size_t start_of_line = tell();            // start of error line
+    rewind( max_context_lines, max_context_chars ); // rewind a couple lines to show context
+    const size_t start_of_context = tell();         // start of context (couple lines above)
+    size_t end_of_line;                             // end of error line (without \n)
+
+    {
+        seek( cursor_pos );
+        // find end of line and store in endpos
+        end_of_line = tell();
+        while( stream->peek() != EOF ) {
+            if( stream->peek() == '\n' ) {
+                break;
             }
-        } else {
-            err << *it;
-        }
-    }
-    if( !is_whitespace( peek() ) && stream->good() ) {
-        err << peek();
-    }
-    // display a pointer to the position
-    rewind( 1, 240 );
-    startpos = tell();
-    err << '\n';
-    if( pos > startpos ) {
-        err << std::string( pos - startpos, ' ' );
-    }
-    err << "^\n";
-    seek( pos );
-    // if that wasn't the end of the line, continue underneath pointer
-    char ch = stream->get();
-    if( ch == '\r' ) {
-        if( peek() == '\n' ) {
             stream->get();
-        }
-    } else if( ch == '\n' ) {
-        // pass
-    } else if( peek() != '\r' && peek() != '\n' && !stream->eof() ) {
-        for( size_t i = 0; i < pos - startpos + 1; ++i ) {
-            err << ' ';
+            end_of_line = tell();
         }
     }
+    seek( start_of_context );
+    {
+        // print context lines to start of error line
+        std::string buffer( start_of_line - start_of_context, '\0' );
+        stream->read( buffer.data(), start_of_line - start_of_context );
+        err << buffer;
+    }
+    {
+        // print error line
+        std::string buffer( end_of_line - start_of_line, '\0' );
+        stream->read( buffer.data(), end_of_line - start_of_line );
+        err << color_error << buffer << color_end << "\n";
+    }
+    {
+        // display a cursor at the position if possible, or at start of line
+        err << color_highlight;
+        if( const int padding = cursor_pos - start_of_line - 1; padding > 0 ) {
+            err << std::string( padding, ' ' );
+        }
+        err << "▲▲▲" << color_end;
+    }
+    seek( end_of_line );
     // print the next couple lines as well
     int line_count = 0;
-    for( int i = 0; line_count < 3 && stream->good() && i < 240; ++i ) {
+    char ch = 0;
+    for( int i = 0; line_count < max_context_lines && stream->good() && i < max_context_chars; ++i ) {
         stream->get( ch );
         if( !stream->good() ) {
             break;
@@ -1983,11 +2017,8 @@ void TextJsonIn::error( int offset, const std::string &message )
         }
         err << ch;
     }
-    std::string msg = err.str();
-    if( !msg.empty() && msg.back() != '\n' ) {
-        msg.push_back( '\n' );
-    }
-    throw JsonError( err_header.str() + escape_data( msg ) );
+    err << color_end << "\n";
+    throw JsonError( err_header.str() + escape_data( err.str() ) );
 }
 
 void TextJsonIn::string_error( const int offset, const std::string &message )
