@@ -11,7 +11,7 @@
   },
   {
     "id": "dandelion_harv",
-    "type": "harvest",
+    "type": derp,
     "entries": [ { "drop": "raw_dandelion", "base_num": [ 1, 4 ] } ]
   },
   {
