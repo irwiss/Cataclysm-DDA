@@ -1904,30 +1904,36 @@ void TextJsonIn::error( const std::string &message )
 void TextJsonIn::error( int offset, const std::string &message )
 {
 #if defined(_MSC_VER)
-    const bool supports_color = _isatty( _fileno( stdout ) );
+    const bool stdout_redirected = !_isatty( _fileno( stdout ) );
 #else
-    const bool supports_color = isatty( STDOUT_FILENO );
+    const bool stdout_redirected = !isatty( STDOUT_FILENO );
 #endif
 #if defined(CATA_IN_TOOL)
     const bool in_tool = true;
 #else
-    // also check if we're running in a github action
-    const bool in_tool = std::getenv( "GITHUB_ACTIONS" );
+    const bool in_tool = false;
 #endif
 
-    // otherwise debugmsg will handle color tags in both curses and SDL builds
+    // debugmsg can handle color tags in both curses and SDL builds
     std::string color_normal = "<color_white>";
     std::string color_error = "<color_light_red>";
     std::string color_highlight = "<color_cyan>";
     std::string color_end = "</color>";
 
-    if( in_tool ) {
-        // output ANSI colors for github actions or terminal unless
-        // error_log_json_force_no_color is true or stdout is redirected
-        color_normal = supports_color ? "\033[0m" : "";
-        color_error = supports_color ? "\033[0;31m" : "";
-        color_highlight = supports_color ? "\033[0;36m" : "";
-        color_end = supports_color ? "\033[0m" : "";
+    if( in_tool ) { // if we're in tests or formatters...
+        if( !stdout_redirected || error_log_json_force_color ) {
+            // print ANSI colors for github actions or terminal
+            color_normal = "\033[0m";
+            color_error = "\033[0;31m";
+            color_highlight = "\033[0;36m";
+            color_end = "\033[0m";
+        } else {
+            // unless stdout is redirected, then squelch colors
+            color_normal = "";
+            color_error = "";
+            color_highlight = "";
+            color_end = "";
+        }
     }
 
     std::ostringstream err_header;

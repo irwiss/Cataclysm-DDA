@@ -29,6 +29,8 @@ namespace cata::options
 std::vector<std::string> damage_indicators;
 } // namespace cata::options
 
+bool error_log_json_force_color = false;
+
 #ifndef CATA_IN_TOOL
 error_log_format_t error_log_format = error_log_format_t::human_readable;
 check_plural_t check_plural = check_plural_t::certain;

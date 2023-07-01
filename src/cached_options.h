@@ -57,6 +57,7 @@ extern error_log_format_t error_log_format;
 #else
 constexpr error_log_format_t error_log_format = error_log_format_t::human_readable;
 #endif
+extern bool error_log_json_force_color;
 
 enum class check_plural_t {
     none,

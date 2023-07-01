@@ -323,6 +323,9 @@ int main( int argc, const char *argv[] )
         return EXIT_FAILURE;
     }
 
+    // CI can handle colors even with redirected output
+    error_log_json_force_color = std::getenv( "CI" ) != nullptr;
+
     std::string check_plural_str = extract_argument( arg_vec, "--check-plural=" );
     if( check_plural_str == "none" ) {
         // NOLINTNEXTLINE(cata-tests-must-restore-global-state)

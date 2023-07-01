@@ -1,3 +1,4 @@
+#include "cached_options.h"
 #include "format.h"
 #include "json.h"
 
@@ -27,6 +28,8 @@ int main( int argc, char *argv[] )
     std::stringstream out;
     std::string filename;
     std::string header;
+    // CI can handle colors even with redirected output
+    error_log_json_force_color = std::getenv( "CI" ) != nullptr;
 
     char *gateway_var = getenv( "GATEWAY_INTERFACE" );
     if( gateway_var == nullptr ) {
