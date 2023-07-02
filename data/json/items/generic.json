@@ -2022,7 +2022,7 @@
     "copy-from": "standard_template_construct",
     "color": "yellow",
     "name": { "str": "nanofabricator template (silicon photonics)", "str_pl": "nanofabricator templates (silicon photonics)" },
-    "description": "A state-of-the-art optical storage system, containing the instruction set required for the fabrication of complex silicon photonic circuitry.  The data within was once clearly worth millions, but now, you are not sure if it's anything more than a fancy, high-tech paperweight.",
+    "description": "A state-of-the-art optical storage system, containing the instruction set required for the fabrication of complex silicon photonic circuitry.  The data within was once clearly worth millions, but now, you are not sure if it's anything more than a fancy, high-tech paperweight."derp,
     "price": 200000000,
     "price_postapoc": 3000,
     "//": "actually worth millions",
